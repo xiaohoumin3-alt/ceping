@@ -20,7 +20,7 @@ export default function App() {
 
   // 密码核验（服务端原子扣次数）
   async function handleEnter() {
-    const c = code.trim().toLowerCase()
+    const c = code.trim()
     if (!c) return
     setBusy(true); setCodeErr('')
     const { data, error } = await supabase.rpc('verify_and_consume', { p_code: c })
