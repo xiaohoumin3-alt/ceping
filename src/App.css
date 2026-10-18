@@ -165,7 +165,7 @@ body {
 
 /* 朱砂印章（落在人物名右上） */
 .r-seal {
-  position: absolute; right: -46px; top: -6px;
+  position: absolute; right: -8px; top: -14px;
   width: 44px; height: 44px; border: 2px solid var(--cinnabar); border-radius: 4px;
   display: flex; align-items: center; justify-content: center;
   color: var(--cinnabar); font-size: 12px; font-weight: 700; line-height: 1.2;
@@ -218,12 +218,12 @@ body {
 .r-actions .btn { letter-spacing: 4px; text-indent: 4px; }
 
 .praise {
-  margin-top: 26px; padding: 16px; font-size: 13px; line-height: 1.8;
+  margin-top: 34px; padding: 16px; font-size: 13px; line-height: 1.8;
   color: var(--paper-dim);
   border: 1px dashed rgba(201,169,97,0.4); border-radius: 2px;
   text-align: left; position: relative;
 }
-.praise::before { content: '礼'; position: absolute; top: -11px; left: 14px; background: var(--ink); padding: 0 8px; color: var(--gold); font-size: 13px; letter-spacing: 2px; }
+.praise::before { content: '礼'; position: absolute; top: -13px; left: 14px; background: var(--ink); padding: 0 8px; color: var(--gold); font-size: 13px; letter-spacing: 2px; line-height: 1.6; }
 
 /* 减少动效偏好 */
 @media (prefers-reduced-motion: reduce) {
