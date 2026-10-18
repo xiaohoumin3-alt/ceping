@@ -7,6 +7,10 @@ import { drawPoster, savePoster } from './lib/poster'
 
 type Stage = 'gate' | 'quiz' | 'result'
 
+const DIM_NAMES: Record<string, string> = {
+  order: '秩序抱负', insight: '局势洞察', boundary: '进退取舍',
+}
+
 export default function App() {
   const [stage, setStage] = useState<Stage>('gate')
   const [code, setCode] = useState('')
@@ -18,7 +22,6 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  // 密码核验（服务端原子扣次数）
   async function handleEnter() {
     const c = code.trim()
     if (!c) return
@@ -42,7 +45,6 @@ export default function App() {
     setBusy(true)
     const { result, nearTie } = evaluate(answers)
     setResult(result); setNearTie(nearTie)
-    // 记录答题（失败不阻断结果展示）
     try {
       await supabase.from('answers').insert({ code, answers: answers.join(''), result_key: result.key })
     } catch { /* 静默 */ }
@@ -72,19 +74,26 @@ export default function App() {
   if (stage === 'gate') {
     return (
       <div className="gate">
-        <h1 className="title">{QUIZ.meta.title}</h1>
-        <p className="subtitle">{QUIZ.meta.subtitle}</p>
-        <input
-          className="code-input" type="text" placeholder="请输入测评密码"
-          value={code} onChange={e => setCode(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleEnter()}
-        />
-        {codeErr && <p className="err">{codeErr}</p>}
-        <button className="btn primary" disabled={busy} onClick={handleEnter}>
-          {busy ? '验证中…' : '开始测评'}
-        </button>
-        <p className="fine">每个密码可使用 3 次 · {QUIZ.meta.questionCount} 道题 · 约 3 分钟</p>
+        <p className="gate-eyebrow">命 书 一 卷 · 照 见 古 今</p>
+        <h1 className="gate-title">古人<em>命运</em>镜像测试</h1>
+        <p className="gate-sub">十五问，照出你是哪位历史人物的命运原型</p>
+        <p className="gate-ornament">❖ ❖ ❖</p>
+        <div className="gate-form">
+          <input
+            className="code-input" type="text" placeholder="请输入测评密码"
+            value={code} onChange={e => setCode(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleEnter()}
+          />
+          {codeErr && <p className="err">{codeErr}</p>}
+          <button className="btn primary" style={{ marginTop: 22 }} disabled={busy || !code.trim()} onClick={handleEnter}>
+            {busy ? '推 衍 中 …' : '启 卷'}
+          </button>
+        </div>
+        <div className="gate-meta">
+          <span>一码三用</span><span>十五问</span><span>约三分钟</span>
+        </div>
         <p className="fine">{QUIZ.meta.disclaimer}</p>
+        <div className="gate-seal">命理自鉴</div>
       </div>
     )
   }
@@ -94,8 +103,11 @@ export default function App() {
     const answered = answers.filter(Boolean).length
     return (
       <div className="quiz">
+        <div className="quiz-head">
+          <p className="quiz-count"><b>{String(idx + 1).padStart(2, '0')}</b> ／ {QUESTIONS.length}</p>
+          <span className="quiz-dimtag">{DIM_NAMES[q.dim]}</span>
+        </div>
         <div className="progress"><div style={{ width: `${(answered / QUESTIONS.length) * 100}%` }} /></div>
-        <p className="qnum">{idx + 1} / {QUESTIONS.length}</p>
         <h2 className="qtext">{q.text}</h2>
         <div className="options">
           {q.options.map(o => (
@@ -103,14 +115,14 @@ export default function App() {
               key={o.k}
               className={`option ${answers[idx] === o.k ? 'selected' : ''}`}
               onClick={() => choose(o.k)}
-            >{o.k}. {o.t}</button>
+            ><span className="k">{o.k}</span>{o.t}</button>
           ))}
         </div>
         <div className="quiz-nav">
           <button className="btn" disabled={idx === 0} onClick={() => setIdx(idx - 1)}>上一题</button>
           {idx === QUESTIONS.length - 1
             ? <button className="btn primary" disabled={answers.some(a => !a) || busy} onClick={finish}>
-                {busy ? '生成中…' : '查看结果'}
+                {busy ? '推 衍 中 …' : '揭 晓'}
               </button>
             : <button className="btn primary" disabled={!answers[idx]} onClick={() => setIdx(idx + 1)}>下一题</button>}
         </div>
@@ -118,25 +130,40 @@ export default function App() {
     )
   }
 
-  // result
   const r = result!
+  const sc = computeScores(answers)
   return (
     <div className="result">
-      <p className="r-person">{r.person}</p>
-      <h1 className="r-name">{r.name}</h1>
+      <p className="r-eyebrow">镜 中 人 已 现</p>
+      <div className="r-person-wrap">
+        <h1 className="r-person">{r.person}</h1>
+        <span className="r-seal">命运印证</span>
+      </div>
+      <p className="r-name">{r.name.split('·')[1]?.trim()}</p>
+      <div className="gold-rule" />
       <p className="r-fate">{r.fateLine}</p>
-      <div className="r-block"><h3>你是谁</h3><p>{r.profile}</p></div>
-      <div className="r-block"><h3>你的天赋</h3><p>{r.strengths}</p></div>
-      <div className="r-block"><h3>你的盲区</h3><p>{r.blindSpots}</p></div>
-      <div className="r-block"><h3>给你的话</h3><p>{r.advice}</p></div>
+
+      <div className="r-dims">
+        <div className="r-dim"><p className="v">{sc.order}<small> /15</small></p><p className="n">秩序抱负</p></div>
+        <div className="r-dim"><p className="v">{sc.insight}<small> /15</small></p><p className="n">局势洞察</p></div>
+        <div className="r-dim"><p className="v">{sc.boundary}<small> /15</small></p><p className="n">进退取舍</p></div>
+      </div>
+
+      <div className="r-block"><h3>镜 中 人</h3><p>{r.profile}</p></div>
+      <div className="r-block"><h3>天 赋</h3><p>{r.strengths}</p></div>
+      <div className="r-block"><h3>盲 区</h3><p>{r.blindSpots}</p></div>
+      <div className="r-block"><h3>赠 言</h3><p>{r.advice}</p></div>
+
+      <p className="r-quote">{r.quote}</p>
       {nearTie && <p className="r-mixed">※ 混合型倾向：你的画像接近两种原型的交界</p>}
+
       <div className="r-actions">
-        <button className="btn primary" onClick={handleSave}>保存结果海报</button>
-        <button className="btn" onClick={handleCopyLink}>{copied ? '已复制 ✓' : '复制结果链接'}</button>
-        <button className="btn" onClick={restart}>再测一次</button>
+        <button className="btn primary" onClick={handleSave}>收 藏 命 书</button>
+        <button className="btn" onClick={handleCopyLink}>{copied ? '已 复 制 ✓' : '分 享 镜 像'}</button>
+        <button className="btn" onClick={restart}>再 照 一 次</button>
       </div>
       <div className="praise">
-        <p>🎉 好评有礼：给店铺留下好评后，联系客服发送好评截图，即可获得 1 元返现！</p>
+        给店铺留下好评后，联系客服发送好评截图，即可获得 1 元返现。感谢你与镜中人的相遇。
       </div>
       <p className="fine">{QUIZ.meta.disclaimer}</p>
     </div>

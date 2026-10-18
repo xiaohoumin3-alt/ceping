@@ -1,4 +1,4 @@
-// Canvas 2D 海报绘制 → PNG（替代 html2canvas，规避 iOS Safari 兼容坑）
+// Canvas 2D 海报绘制 → PNG ·「古籍命书」版
 import type { QuizResult } from './quiz'
 import { QUIZ } from './quiz'
 
@@ -11,62 +11,102 @@ export function drawPoster(result: QuizResult, dimScores: Record<string, number>
     const ctx = canvas.getContext('2d')
     if (!ctx) { reject(new Error('canvas unavailable')); return }
 
-    // 背景
-    const bg = ctx.createLinearGradient(0, 0, 0, H)
-    bg.addColorStop(0, '#1a1f3a'); bg.addColorStop(1, '#2d1f4a')
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H)
+    // 玄墨底 + 顶部金晕
+    ctx.fillStyle = '#0e0f12'; ctx.fillRect(0, 0, W, H)
+    const glow = ctx.createRadialGradient(W/2, -100, 50, W/2, -100, 900)
+    glow.addColorStop(0, 'rgba(201,169,97,0.14)'); glow.addColorStop(1, 'transparent')
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H)
 
-    // 标题
-    ctx.fillStyle = '#d4c5a9'; ctx.font = '34px sans-serif'; ctx.textAlign = 'center'
-    ctx.fillText('古 人 命 运 镜 像 测 试', W / 2, 120)
+    // 边框（细金线 + 内衬线）
+    ctx.strokeStyle = 'rgba(201,169,97,0.55)'; ctx.lineWidth = 2
+    ctx.strokeRect(36, 36, W-72, H-72)
+    ctx.strokeStyle = 'rgba(201,169,97,0.2)'; ctx.lineWidth = 1
+    ctx.strokeRect(48, 48, W-96, H-96)
 
-    // 人物名
-    ctx.fillStyle = '#f5e6c8'; ctx.font = 'bold 96px serif'
-    ctx.fillText(result.person, W / 2, 300)
-    ctx.fillStyle = '#c9a86a'; ctx.font = '40px sans-serif'
-    ctx.fillText(result.name.split('·')[1]?.trim() ?? '', W / 2, 370)
+    ctx.textAlign = 'center'
+
+    // 眉题
+    ctx.fillStyle = 'rgba(201,169,97,0.85)'; ctx.font = '22px "Noto Serif SC", serif'
+    ctx.fillText('命 书 一 卷 · 照 见 古 今', W/2, 116)
+    // 饰线
+    ctx.strokeStyle = 'rgba(201,169,97,0.3)'
+    ctx.beginPath(); ctx.moveTo(W/2-140, 140); ctx.lineTo(W/2+140, 140); ctx.stroke()
+
+    // 人物名（大字）
+    ctx.fillStyle = '#e8ddc4'; ctx.font = '900 92px "Noto Serif SC", "Songti SC", serif'
+    ctx.fillText(result.person, W/2, 268)
+    ctx.fillStyle = '#c9a961'; ctx.font = '34px "Noto Serif SC", serif'
+    ctx.fillText(result.name.split('·')[1]?.trim() ?? '', W/2, 330)
 
     // 命运弧线
-    ctx.fillStyle = '#e8dcc0'; ctx.font = '30px sans-serif'
-    wrapText(ctx, result.fateLine, W / 2, 450, 600, 44)
+    ctx.fillStyle = 'rgba(232,221,196,0.75)'; ctx.font = '26px "Noto Serif SC", serif'
+    wrapText(ctx, result.fateLine, W/2, 396, 560, 42)
 
-    // 维度分数条
-    const dims = [
-      ['秩序抱负', dimScores.order], ['局势洞察', dimScores.insight], ['进退取舍', dimScores.boundary],
-    ] as const
-    let y = 580
-    ctx.textAlign = 'left'
-    for (const [name, val] of dims) {
-      ctx.fillStyle = '#d4c5a9'; ctx.font = '28px sans-serif'
-      ctx.fillText(name, 110, y)
-      // 条
-      ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(260, y - 22, 340, 28)
-      ctx.fillStyle = '#c9a86a'; ctx.fillRect(260, y - 22, 340 * (val / 15), 28)
-      ctx.fillStyle = '#f5e6c8'; ctx.font = '26px sans-serif'
-      ctx.fillText(`${val}/15`, 630, y)
-      y += 80
-    }
+    // 维度分（三列）
+    const dims = [['秩序抱负', dimScores.order], ['局势洞察', dimScores.insight], ['进退取舍', dimScores.boundary]] as const
+    const dx = [W/2-200, W/2, W/2+200]
+    dims.forEach(([n, v], i) => {
+      ctx.fillStyle = '#e6c98a'; ctx.font = '700 46px "Noto Serif SC", serif'
+      ctx.fillText(String(v), dx[i], 520)
+      ctx.fillStyle = 'rgba(168,159,136,0.9)'; ctx.font = '20px "Noto Serif SC", serif'
+      ctx.fillText(n, dx[i], 556)
+    })
+
+    // 分隔双线
+    ctx.strokeStyle = 'rgba(201,169,97,0.25)'
+    ctx.beginPath(); ctx.moveTo(120, 600); ctx.lineTo(W-120, 600); ctx.stroke()
+
+    // 镜中人
+    let y = 664
+    ctx.font = '24px "Noto Serif SC", serif'
+    y = drawBlock(ctx, '镜 中 人', result.profile, y)
+    y = drawBlock(ctx, '天 赋', result.strengths, y)
+    y = drawBlock(ctx, '盲 区', result.blindSpots, y)
+    y = drawBlock(ctx, '赠 言', result.advice, y)
 
     // 金句
-    ctx.textAlign = 'center'
-    ctx.fillStyle = 'rgba(245,230,200,0.9)'; ctx.font = '28px sans-serif'
-    wrapText(ctx, `"${result.quote}"`, W / 2, y + 60, 600, 42)
-
-    if (nearTie) {
-      ctx.fillStyle = 'rgba(212,197,169,0.7)'; ctx.font = '24px sans-serif'
-      ctx.fillText('※ 混合型倾向：接近两种原型的交界', W / 2, y + 180)
+    if (y < 1120) {
+      ctx.fillStyle = 'rgba(168,159,136,0.9)'; ctx.font = '24px "Noto Serif SC", serif'
+      y = wrapText(ctx, `"${result.quote}"`, W/2, y + 40, 580, 38) + 10
     }
 
-    // 免责声明
-    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '20px sans-serif'
-    ctx.fillText('娱乐性自评 · 非心理诊断', W / 2, H - 130)
-    ctx.fillText(QUIZ.meta.title, W / 2, H - 90)
+    // 混合型
+    if (nearTie) {
+      ctx.fillStyle = 'rgba(195,64,47,0.85)'; ctx.font = '22px "Noto Serif SC", serif'
+      ctx.fillText('※ 混合型倾向：接近两种原型的交界', W/2, Math.min(y + 36, 1150))
+    }
+
+    // 朱砂印章（右下）
+    drawSeal(ctx, W - 130, H - 200)
+
+    // 底部信息
+    ctx.fillStyle = 'rgba(168,159,136,0.55)'; ctx.font = '20px "Noto Serif SC", serif'
+    ctx.fillText('娱乐性自评 · 非心理诊断', W/2, H - 108)
+    ctx.fillText(QUIZ.meta.title, W/2, H - 76)
 
     canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/png')
   })
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, cx: number, startY: number, maxW: number, lineH: number) {
+function drawBlock(ctx: CanvasRenderingContext2D, label: string, text: string, y: number): number {
+  ctx.fillStyle = '#c9a961'; ctx.font = '24px "Noto Serif SC", serif'
+  ctx.fillText(label, W/2, y)
+  ctx.fillStyle = 'rgba(232,221,196,0.92)'; ctx.font = '25px "Noto Serif SC", serif'
+  const end = wrapText(ctx, text, W/2, y + 42, 590, 40)
+  return end + 34
+}
+
+function drawSeal(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.save()
+  ctx.translate(x, y); ctx.rotate(4 * Math.PI / 180)
+  ctx.strokeStyle = 'rgba(195,64,47,0.85)'; ctx.lineWidth = 3
+  ctx.strokeRect(-26, -26, 52, 52)
+  ctx.fillStyle = 'rgba(195,64,47,0.85)'; ctx.font = '700 17px "Noto Serif SC", serif'
+  ctx.fillText('命运', 0, -6); ctx.fillText('印证', 0, 16)
+  ctx.restore()
+}
+
+function wrapText(ctx: CanvasRenderingContext2D, text: string, cx: number, startY: number, maxW: number, lineH: number): number {
   const chars = Array.from(text)
   let line = '', y = startY
   for (const ch of chars) {
@@ -74,15 +114,16 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, cx: number, start
       ctx.fillText(line, cx, y); line = ch; y += lineH
     } else line += ch
   }
-  if (line) ctx.fillText(line, cx, y)
+  if (line) { ctx.fillText(line, cx, y); y += lineH }
+  return y
 }
 
-/** 保存/分享海报：优先 Web Share，否则下载，最后弹指引长按保存 */
+/** 保存/分享海报：优先 Web Share，否则下载 */
 export async function savePoster(blob: Blob, filename = 'fate-poster.png') {
   const file = new File([blob], filename, { type: 'image/png' })
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
   if (nav.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: '我的命运原型' }); return 'shared' } catch { /* 用户取消或失败 */ }
+    try { await navigator.share({ files: [file], title: '我的命运原型' }); return 'shared' } catch { /* 用户取消 */ }
   }
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
