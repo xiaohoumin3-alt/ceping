@@ -1,0 +1,61 @@
+:root {
+  --bg: #14172b; --card: #1e2238; --gold: #c9a86a; --gold-light: #f5e6c8;
+  --text: #e8dcc0; --muted: #8b87a0; --err: #e07a7a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, 'PingFang SC', 'Noto Sans SC', sans-serif; }
+#root { max-width: 480px; margin: 0 auto; min-height: 100vh; padding: 24px 20px 48px; }
+
+.title { font-size: 34px; font-weight: 700; color: var(--gold-light); text-align: center; letter-spacing: 2px; margin-top: 48px; }
+.subtitle { text-align: center; color: var(--muted); margin: 16px 0 48px; font-size: 15px; line-height: 1.6; }
+
+.code-input {
+  width: 100%; padding: 16px; font-size: 18px; text-align: center;
+  background: var(--card); border: 1px solid #3a3f5c; border-radius: 12px;
+  color: var(--gold-light); letter-spacing: 2px; outline: none;
+}
+.code-input:focus { border-color: var(--gold); }
+
+.btn {
+  display: inline-block; padding: 14px 24px; font-size: 16px; border-radius: 12px;
+  border: 1px solid #3a3f5c; background: var(--card); color: var(--text); cursor: pointer;
+}
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn.primary { background: linear-gradient(135deg, #c9a86a, #a8863f); color: #14172b; font-weight: 600; border: none; }
+.btn { margin-top: 12px; }
+
+.err { color: var(--err); font-size: 14px; margin-top: 12px; text-align: center; }
+.fine { color: var(--muted); font-size: 12px; text-align: center; margin-top: 20px; line-height: 1.6; }
+
+.gate button.primary { width: 100%; margin-top: 20px; }
+
+/* quiz */
+.progress { height: 4px; background: #2a2f4a; border-radius: 2px; overflow: hidden; margin-top: 12px; }
+.progress > div { height: 100%; background: var(--gold); transition: width .3s; }
+.qnum { color: var(--muted); text-align: center; margin: 20px 0 8px; font-size: 14px; }
+.qtext { font-size: 20px; line-height: 1.6; margin: 16px 0 24px; min-height: 96px; }
+.options { display: flex; flex-direction: column; gap: 12px; }
+.option {
+  text-align: left; padding: 16px; font-size: 15px; line-height: 1.5;
+  background: var(--card); border: 1px solid #3a3f5c; border-radius: 12px; color: var(--text); cursor: pointer;
+}
+.option.selected { border-color: var(--gold); background: rgba(201,168,106,0.12); }
+.quiz-nav { display: flex; justify-content: space-between; margin-top: 28px; }
+.quiz-nav .btn { flex: 1; }
+.quiz-nav .btn + .btn { margin-left: 12px; }
+
+/* result */
+.result { text-align: center; padding-top: 24px; }
+.r-person { font-size: 15px; color: var(--muted); }
+.r-name { font-size: 30px; color: var(--gold-light); margin: 8px 0; }
+.r-fate { font-size: 16px; color: var(--gold); margin-bottom: 24px; line-height: 1.6; }
+.r-block { text-align: left; background: var(--card); border-radius: 12px; padding: 18px; margin-top: 14px; }
+.r-block h3 { font-size: 14px; color: var(--gold); margin-bottom: 8px; }
+.r-block p { font-size: 15px; line-height: 1.7; }
+.r-mixed { color: var(--muted); font-size: 13px; margin-top: 16px; }
+.r-actions { display: flex; flex-direction: column; gap: 4px; margin-top: 24px; }
+.r-actions .btn { width: 100%; margin-top: 0; }
+.praise {
+  margin-top: 20px; padding: 14px; background: rgba(201,168,106,0.1);
+  border: 1px dashed var(--gold); border-radius: 12px; font-size: 14px; line-height: 1.6;
+}
