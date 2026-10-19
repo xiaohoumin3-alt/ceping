@@ -1,58 +1,83 @@
-// 云函数：LLM 动态生成个性化测评解读
-// 输入: { answers: "ABCDE...", dims: {order,insight,boundary}, resultKey, resultName, resultPerson, fateLine, nearTie }
-// 输出: { profile, strengths, blindSpots, advice, quote }  —— 全部由 LLM 依据用户具体答案生成
+// 云函数：LLM 全动态测评——人物原型由大模型从用户具体选择中推理得出（无固定池、无映射算法）
 const tcb = require('@cloudbase/node-sdk');
 const app = tcb.init({ env: 'cloud1-d4gw10duaac5d8b50' });
 
 exports.main = async (event) => {
-  // HTTP 网关会把原始请求包在 event.body 里
   let payload = event
   if (event && typeof event.body === 'string') {
     try { payload = JSON.parse(event.body) } catch { payload = {} }
   } else if (event && event.body && typeof event.body === 'object') {
     payload = event.body
   }
-  const { answers, dims, resultKey, resultName, resultPerson, fateLine, nearTie, questions } = payload
-  if (!answers || !resultKey) return { error: 'missing params' }
+  const { answers, questions } = payload
+  if (!answers || !questions) return { error: 'missing params' }
 
-  const model = app.ai().createModel('hunyuan-exp')
+  const qa = questions.map((q, i) =>
+    `${i + 1}. ${q.text}\n   选项：${q.options.map(o => `${o.k}.${o.t}`).join('｜')}\n   用户选了：${answers[i]}（${q.options.find(o => o.k === answers[i])?.t ?? ''}）`
+  ).join('\n')
 
-  const prompt = `你是一位精通中国历史人物命运叙事的测评解读师。用户的测评结果已由算法确定，你的任务是基于用户的**具体选择**撰写专属解读，不得套用模板腔。
+  const prompt = `你是一位贯通中国历史的「命运原型」解读师。用户完成了一个情境测评，下面是全部 15 道题、所有选项及用户的具体选择。
 
-【测评】古人命运镜像测试（15题情境选择）
-【算法判定】用户是「${resultName}」（人物：${resultPerson}），命运弧线："${fateLine}"
-${nearTie ? '【注意】用户画像接近两种原型的交界，解读中要点出这种混合气质。' : ''}
+${qa}
 
-【用户的三维得分】（每维满分15）
-- 秩序抱负：${dims.order}
-- 局势洞察：${dims.insight}
-- 进退取舍：${dims.boundary}
+你的任务：
+一、从中国历史人物中（任何朝代、任何领域——帝王/将相/文人/墨客/侠士/僧道/匠人皆可），为用户推理出一位「命运原型」。规则：
+- 必须基于用户选择中反复出现的行为模式推理（如何面对混乱、如何处理人情、如何取舍），在解读中直接引用至少3个具体选择作为证据
+- 人物必须是真实历史人物（文学虚构人物如林黛玉不可用；花木兰这类有广泛历史叙事基础的传说人物可用）
+- 避免网络热门烂大街组合（李白/苏轼/嬴政若不贴切则选更贴合的冷门人物，贴切才用）
+- 人物的命运弧线要能与用户画像形成呼应
 
-【用户的15道题选择】（题目+所选选项）：
-${(questions || []).map((q, i) => `${i + 1}. ${q.text}\n   选了：${q.options.find(o => o.k === (answers[i] || 'A'))?.t ?? answers[i]}`).join('\n')}
-
-请输出严格的 JSON（不要 markdown 代码块），四个字段：
+二、输出严格 JSON（无 markdown 代码块）：
 {
-  "profile": "镜中人画像，120-180字。必须直接引用用户至少2个具体选择（如'当熟人借钱时你选了…'），点出他哪个维度最高哪个最低并解释这意味着什么。禁止'你是一个…的人'开头。",
-  "strengths": "天赋，60-100字。基于得分最高的维度，结合具体题目行为佐证。",
-  "blindSpots": "盲区，60-100字。基于得分最低的维度，用具体的日常场景点破，不羞辱但要有刺痛感。",
-  "advice": "赠言，60-100字。给一条可执行的具体动作建议（要有数字或明确做法），与历史人物的命运故事呼应。",
-  "quote": "趣味金句，20-40字。仿 historical 人物口吻的一句现代吐槽或自白，带幽默感。"
+  "person": "人物姓名（2-4字，如：谢安）",
+  "title": "原型名号（6-10字，如：淝水对弈·从容布局者）",
+  "fateLine": "命运弧线，一句15-25字，诗化语言",
+  "profile": "镜中人画像，120-160字。以用户的选择为证据链推理，必须直接引用至少3个具体选择。",
+  "strengths": "天赋，50-80字。",
+  "blindSpots": "盲区，50-80字，具体场景点破，不羞辱但有刺痛感。",
+  "advice": "赠言，50-80字，一条可执行建议，呼应人物命运转折点。",
+  "quote": "趣味金句，15-30字，仿该人物口吻的现代吐槽，幽默。",
+  "dims": {"order": 数字0-15的秩序抱负评估, "insight": 数字, "boundary": 数字}
 }`
 
   try {
+    const model = app.ai().createModel('hunyuan-exp')
     const res = await model.generateText({
       model: 'hunyuan-2.0-instruct-20251111',
       messages: [
-        { role: 'system', content: '你是资深中文测评文案师，输出严格 JSON，无多余文字。' },
+        { role: 'system', content: '你是资深中文测评文案师与历史学者，输出严格 JSON，无多余文字。' },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.8,
+      temperature: 0.9,
     })
-    const text = res?.choices?.[0]?.message?.content ?? res?.text ?? JSON.stringify(res).slice(0, 500)
-    console.log('RAW:', JSON.stringify(res).slice(0, 300))
-    const jsonStr = text.replace(/```json?|```/g, '').trim()
-    const parsed = JSON.parse(jsonStr.slice(jsonStr.indexOf('{'), jsonStr.lastIndexOf('}') + 1))
+    const raw = res?.choices?.[0]?.message?.content ?? res?.text ?? ''
+    console.log('RAW:', JSON.stringify(res).slice(0, 400))
+    if (!raw) return { error: 'empty llm content', res: JSON.stringify(res).slice(0, 300) }
+    let jsonStr = raw.replace(/```json?|```/g, '').trim()
+    const s = jsonStr.indexOf('{'), e2 = jsonStr.lastIndexOf('}')
+    if (s >= 0) jsonStr = jsonStr.slice(s, e2 > s ? e2 + 1 : undefined)
+    // 截断修复：补齐未闭合的字符串与括号
+    function tryParse(t) { try { return JSON.parse(t) } catch { return null } }
+    let parsed = tryParse(jsonStr)
+    if (!parsed) {
+      let fixed = jsonStr
+      const inStr = (fixed.match(/"/g) || []).length % 2 === 1
+      if (inStr) fixed += '"'
+      const opens = { '{': 0, '[': 0 }
+      let instr = false, esc = false
+      for (const ch of fixed) {
+        if (esc) { esc = false; continue }
+        if (ch === '\\') { esc = true; continue }
+        if (ch === '"') instr = !instr
+        if (!instr) { if (ch === '{') opens['{']++; if (ch === '[') opens['[']++ }
+      }
+      // 去掉最后一个未完成的键值对（若以逗号或冒号结尾）
+      fixed = fixed.replace(/,\s*$/, '').replace(/:\s*$/, ': null')
+      for (let i = 0; i < opens['[']; i++) fixed += ']'
+      for (let i = 0; i < opens['{']; i++) fixed += '}'
+      parsed = tryParse(fixed)
+      if (!parsed) return { error: 'llm output unparseable', raw: jsonStr.slice(0, 800) }
+    }
     return { ...parsed, generated: true }
   } catch (e) {
     return { error: String(e.message || e) }

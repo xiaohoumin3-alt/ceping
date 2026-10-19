@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import './App.css'
-import { QUESTIONS, QUIZ, evaluate, computeScores } from './lib/quiz'
-import type { QuizResult } from './lib/quiz'
+import { QUESTIONS, QUIZ, computeScores } from './lib/quiz'
 import { supabase } from './lib/supabase'
 import { drawPoster, savePoster } from './lib/poster'
-import { generateInterpretation } from './lib/llm'
+import { generateResult } from './lib/llm'
 import type { LLMResult } from './lib/llm'
 
-type Stage = 'gate' | 'quiz' | 'result'
+type Stage = 'gate' | 'quiz' | 'divining' | 'result'
 
 const DIM_NAMES: Record<string, string> = {
   order: '秩序抱负', insight: '局势洞察', boundary: '进退取舍',
@@ -19,10 +18,8 @@ export default function App() {
   const [codeErr, setCodeErr] = useState('')
   const [idx, setIdx] = useState(0)
   const [answers, setAnswers] = useState<string[]>(Array(QUESTIONS.length).fill(''))
-  const [result, setResult] = useState<QuizResult | null>(null)
-  const [interpretation, setInterpretation] = useState<LLMResult | null>(null)
-  const [llmLoading, setLlmLoading] = useState(false)
-  const [nearTie, setNearTie] = useState(false)
+  const [llm, setLlm] = useState<LLMResult | null>(null)
+  const [llmErr, setLlmErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -46,39 +43,60 @@ export default function App() {
   }
 
   async function finish() {
-    setBusy(true)
-    const { result, nearTie } = evaluate(answers)
-    setResult(result); setNearTie(nearTie)
-    const sc = computeScores(answers)
-    // 先展示基础结果，LLM 解读异步补充
-    setStage('result')
-    setLlmLoading(true)
-    generateInterpretation(answers, sc, result.key, result.name, result.person, result.fateLine, nearTie)
-      .then(interp => { setInterpretation(interp); setLlmLoading(false) })
-      .catch(() => { setLlmLoading(false) })
+    setStage('divining')
+    setLlmErr('')
+    setLlm(null)
     try {
-      await supabase.from('answers').insert({ code, answers: answers.join(''), result_key: result.key })
+      const r = await generateResult(answers)
+      setLlm(r)
+      setStage('result')
+    } catch (e) {
+      setLlmErr(String((e as Error).message ?? e))
+    }
+    try {
+      await supabase.from('answers').insert({ code, answers: answers.join(''), result_key: llmPlaceholderKey(answers) })
     } catch { /* 静默 */ }
-    setBusy(false)
+  }
+
+  function llmPlaceholderKey(ans: string[]) {
+    // 记录用：存答案串即可，人物由 LLM 动态得出，不再有固定 key
+    return 'llm:' + ans.join('')
   }
 
   async function handleSave() {
-    if (!result) return
+    if (!llm) return
     const sc = computeScores(answers)
-    const blob = await drawPoster(result, { order: sc.order, insight: sc.insight, boundary: sc.boundary }, nearTie)
+    const dims = llm.dims ?? { order: sc.order, insight: sc.insight, boundary: sc.boundary }
+    const blob = await drawPoster(
+      {
+        key: 'llm', name: llm.title, person: llm.person, fateLine: llm.fateLine,
+        profile: llm.profile, strengths: llm.strengths, blindSpots: llm.blindSpots,
+        advice: llm.advice, quote: llm.quote, shareTitle: llm.title,
+      },
+      dims, false,
+    )
     const how = await savePoster(blob)
     if (how === 'downloaded') alert('已开始下载。手机端若未直接进相册，请长按图片或到浏览器下载目录保存。')
   }
 
   async function handleCopyLink() {
-    const url = `${location.origin}${location.pathname}#result=${result?.key ?? ''}`
-    try { await navigator.clipboard.writeText(url) } catch { /* 降级 */ }
+    try { await navigator.clipboard.writeText(`${location.origin}${location.pathname}`) } catch { /* 降级 */ }
     setCopied(true); setTimeout(() => setCopied(false), 2000)
   }
 
   function restart() {
     setAnswers(Array(QUESTIONS.length).fill('')); setIdx(0)
-    setResult(null); setInterpretation(null); setStage('quiz')
+    setLlm(null); setLlmErr(''); setStage('quiz')
+  }
+
+  async function retryLlm() {
+    setLlmErr(''); setStage('divining')
+    try {
+      const r = await generateResult(answers)
+      setLlm(r); setStage('result')
+    } catch (e) {
+      setLlmErr(String((e as Error).message ?? e))
+    }
   }
 
   if (stage === 'gate') {
@@ -131,17 +149,41 @@ export default function App() {
         <div className="quiz-nav">
           <button className="btn" disabled={idx === 0} onClick={() => setIdx(idx - 1)}>上一题</button>
           {idx === QUESTIONS.length - 1
-            ? <button className="btn primary" disabled={answers.some(a => !a) || busy} onClick={finish}>
-                {busy ? '推 衍 中 …' : '揭 晓'}
-              </button>
+            ? <button className="btn primary" disabled={answers.some(a => !a) || busy} onClick={finish}>揭 晓</button>
             : <button className="btn primary" disabled={!answers[idx]} onClick={() => setIdx(idx + 1)}>下一题</button>}
         </div>
       </div>
     )
   }
 
-  const r = result!
+  if (stage === 'divining') {
+    return (
+      <div className="divining">
+        <p className="gate-eyebrow">焚 香 推 衍</p>
+        <div className="divining-orb"><span>推</span><span>衍</span><span>中</span></div>
+        <p className="divining-text">命盘已成，镜中人正在浮现……</p>
+        <p className="fine">大模型正在通读你的十五个选择，为你推演命运原型 · 约需十余秒</p>
+      </div>
+    )
+  }
+
+  if (llmErr) {
+    return (
+      <div className="result">
+        <p className="gate-eyebrow">推 衍 受 阻</p>
+        <p className="divining-text" style={{ marginTop: 24 }}>镜中光影涣散，请再试一次。</p>
+        <p className="fine">{llmErr}</p>
+        <div className="r-actions" style={{ marginTop: 30 }}>
+          <button className="btn primary" onClick={retryLlm}>再 次 推 衍</button>
+          <button className="btn" onClick={restart}>回 到 首 题</button>
+        </div>
+      </div>
+    )
+  }
+
+  const r = llm!
   const sc = computeScores(answers)
+  const dims = r.dims ?? { order: sc.order, insight: sc.insight, boundary: sc.boundary }
   return (
     <div className="result">
       <p className="r-eyebrow">镜 中 人 已 现</p>
@@ -149,26 +191,22 @@ export default function App() {
         <h1 className="r-person">{r.person}</h1>
         <span className="r-seal">命运印证</span>
       </div>
-      <p className="r-name">{r.name.split('·')[1]?.trim()}</p>
+      <p className="r-name">{r.title}</p>
       <div className="gold-rule" />
       <p className="r-fate">{r.fateLine}</p>
 
       <div className="r-dims">
-        <div className="r-dim"><p className="v">{sc.order}<small> /15</small></p><p className="n">秩序抱负</p></div>
-        <div className="r-dim"><p className="v">{sc.insight}<small> /15</small></p><p className="n">局势洞察</p></div>
-        <div className="r-dim"><p className="v">{sc.boundary}<small> /15</small></p><p className="n">进退取舍</p></div>
+        <div className="r-dim"><p className="v">{dims.order}<small> /15</small></p><p className="n">秩序抱负</p></div>
+        <div className="r-dim"><p className="v">{dims.insight}<small> /15</small></p><p className="n">局势洞察</p></div>
+        <div className="r-dim"><p className="v">{dims.boundary}<small> /15</small></p><p className="n">进退取舍</p></div>
       </div>
 
-      <div className="r-block">
-        <h3>镜 中 人{llmLoading && <span className="llm-hint"> · 命书撰写中…</span>}{interpretation?.generated && <span className="llm-hint ok"> · 专属解读</span>}</h3>
-        <p>{llmLoading && !interpretation ? r.profile : (interpretation?.profile ?? r.profile)}</p>
-      </div>
-      <div className="r-block"><h3>天 赋</h3><p>{interpretation?.strengths ?? r.strengths}</p></div>
-      <div className="r-block"><h3>盲 区</h3><p>{interpretation?.blindSpots ?? r.blindSpots}</p></div>
-      <div className="r-block"><h3>赠 言</h3><p>{interpretation?.advice ?? r.advice}</p></div>
+      <div className="r-block"><h3>镜 中 人<span className="llm-hint ok"> · 专属推演</span></h3><p>{r.profile}</p></div>
+      <div className="r-block"><h3>天 赋</h3><p>{r.strengths}</p></div>
+      <div className="r-block"><h3>盲 区</h3><p>{r.blindSpots}</p></div>
+      <div className="r-block"><h3>赠 言</h3><p>{r.advice}</p></div>
 
-      <p className="r-quote">{interpretation?.quote ?? r.quote}</p>
-      {nearTie && <p className="r-mixed">※ 混合型倾向：你的画像接近两种原型的交界</p>}
+      <p className="r-quote">{r.quote}</p>
 
       <div className="r-actions">
         <button className="btn primary" onClick={handleSave}>收 藏 命 书</button>
