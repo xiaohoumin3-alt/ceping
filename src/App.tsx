@@ -23,6 +23,10 @@ export default function App() {
   const [llmErr, setLlmErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const radarRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    if (llm?.dims && radarRef.current) drawRadar(radarRef.current, llm.dims)
+  }, [llm, stage])
 
   async function handleEnter() {
     const c = code.trim()
@@ -197,10 +201,6 @@ export default function App() {
   }
 
   const r = llm!
-  const radarRef = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    if (r.dims && radarRef.current) drawRadar(radarRef.current, r.dims)
-  }, [r])
   return (
     <div className="result">
       <p className="r-eyebrow">镜 中 人 已 现</p>
