@@ -1,6 +1,5 @@
 // Canvas 2D 海报绘制 → PNG ·「古籍命书」版
 import type { QuizResult } from './quiz'
-import { QUIZ } from './quiz'
 
 const W = 750, H = 1334
 
