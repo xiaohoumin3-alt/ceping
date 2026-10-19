@@ -5,6 +5,8 @@ import { supabase } from './lib/supabase'
 import { drawPoster, savePoster } from './lib/poster'
 import { generateQuiz, generateResult } from './lib/llm'
 import type { DynQuestion, LLMResult } from './lib/llm'
+import { drawRadar, MatchBars, Timeline, VersusCard } from './components/viz'
+import { useEffect, useRef } from 'react'
 
 type Stage = 'gate' | 'loading-quiz' | 'quiz' | 'divining' | 'result'
 
@@ -195,6 +197,10 @@ export default function App() {
   }
 
   const r = llm!
+  const radarRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    if (r.dims && radarRef.current) drawRadar(radarRef.current, r.dims)
+  }, [r])
   return (
     <div className="result">
       <p className="r-eyebrow">镜 中 人 已 现</p>
@@ -207,10 +213,8 @@ export default function App() {
       <p className="r-fate">{r.fateLine}</p>
 
       {r.dims && (
-        <div className="r-dims">
-          <div className="r-dim"><p className="v">{r.dims.order}<small> /15</small></p><p className="n">秩序抱负</p></div>
-          <div className="r-dim"><p className="v">{r.dims.insight}<small> /15</small></p><p className="n">局势洞察</p></div>
-          <div className="r-dim"><p className="v">{r.dims.boundary}<small> /15</small></p><p className="n">进退取舍</p></div>
+        <div className="radar-wrap">
+          <canvas ref={radarRef} width={280} height={230} />
         </div>
       )}
 
@@ -218,6 +222,27 @@ export default function App() {
       <div className="r-block"><h3>天 赋</h3><p>{r.strengths}</p></div>
       <div className="r-block"><h3>盲 区</h3><p>{r.blindSpots}</p></div>
       <div className="r-block"><h3>赠 言</h3><p>{r.advice}</p></div>
+
+      {r.topMatches && r.topMatches.length > 0 && (
+        <div className="r-block viz-block">
+          <h3>群 像 相 似 度</h3>
+          <MatchBars matches={r.topMatches} me={r.person} />
+        </div>
+      )}
+
+      {r.timeline && r.timeline.length > 0 && (
+        <div className="r-block viz-block">
+          <h3>他 的 人 生 三 幕</h3>
+          <Timeline items={r.timeline} />
+        </div>
+      )}
+
+      {r.versus && (
+        <div className="r-block viz-block">
+          <h3>千 古 对 照</h3>
+          <VersusCard v={r.versus} me={r.person} />
+        </div>
+      )}
 
       <p className="r-quote">{r.quote}</p>
 

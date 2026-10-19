@@ -254,3 +254,48 @@ body {
 }
 .divining-text { color: var(--paper); font-size: 16px; letter-spacing: 3px; }
 @media (prefers-reduced-motion: reduce) { .divining-orb span { animation: none; opacity: .8; } }
+
+/* ---------- 可视化组件 ---------- */
+.viz-block { border-left-color: var(--cinnabar); }
+.radar-wrap { display: flex; justify-content: center; margin: 26px 0 8px; }
+.radar-wrap canvas { filter: drop-shadow(0 0 18px rgba(201,169,97,0.12)); }
+
+.match-bars { text-align: left; margin-top: 6px; }
+.match-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.match-name { flex: 0 0 88px; font-size: 14px; color: var(--paper); }
+.match-name em { font-style: normal; color: var(--cinnabar); font-size: 11px; margin-left: 2px; }
+.match-track { flex: 1; height: 12px; background: rgba(232,221,196,0.07); border-radius: 1px; overflow: visible; position: relative; }
+.match-fill {
+  height: 100%; border-radius: 1px;
+  background: repeating-linear-gradient(135deg, #c9a961, #c9a961 4px, #b28c43 4px, #b28c43 8px);
+  position: relative;
+}
+.match-row.me .match-fill { background: linear-gradient(90deg, #c3402f, #e06a52); }
+.match-pct { position: absolute; right: -44px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--gold-bright); }
+.match-pct2 { flex: 0 0 34px; text-align: right; font-size: 12px; color: var(--paper-dim); }
+.match-tag { margin: 4px 0 0 98px; font-size: 12px; color: var(--paper-dim); letter-spacing: 1px; }
+
+.timeline { text-align: left; margin-top: 10px; }
+.tl-item { display: flex; gap: 14px; position: relative; padding-bottom: 18px; }
+.tl-item:last-child { padding-bottom: 4px; }
+.tl-node {
+  flex: 0 0 26px; width: 26px; height: 26px; border: 1px solid var(--gold); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold-bright); font-size: 13px; background: var(--ink); z-index: 1;
+}
+.tl-line { position: absolute; left: 13px; top: 26px; bottom: 0; width: 1px; background: linear-gradient(180deg, rgba(201,169,97,0.5), rgba(201,169,97,0.12)); }
+.tl-body { flex: 1; }
+.tl-age { color: var(--gold); font-size: 12px; letter-spacing: 3px; }
+.tl-event { color: var(--paper); font-size: 15px; margin-top: 2px; }
+.tl-mirror { color: var(--paper-dim); font-size: 13px; margin-top: 3px; line-height: 1.6; }
+.tl-mirror::before { content: '↳ '; color: var(--gold); }
+
+.versus { text-align: center; }
+.versus-col { display: inline-block; width: 40%; vertical-align: top; padding: 10px 4px; border: 1px solid var(--line); border-radius: 2px; }
+.versus-name { font-size: 22px; font-weight: 700; color: var(--gold-bright); }
+.versus-name.foe { color: #d98b7c; }
+.versus-role { font-size: 11px; color: var(--paper-dim); margin-top: 4px; letter-spacing: 1px; }
+.versus-mid { display: inline-block; width: 12%; color: var(--cinnabar); font-size: 14px; line-height: 1.8; letter-spacing: 2px; vertical-align: middle; }
+.versus-diff { margin-top: 14px; font-size: 14px; color: var(--paper); line-height: 1.8; text-align: left; padding: 0 4px; }
+.versus-diff::before { content: '判词 '; color: var(--cinnabar); font-size: 12px; letter-spacing: 2px; }
+.match-group { margin-top: 4px; }

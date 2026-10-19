@@ -6,6 +6,9 @@ export interface LLMResult {
   person: string; title: string; fateLine: string
   profile: string; strengths: string; blindSpots: string; advice: string; quote: string
   dims?: { order: number; insight: number; boundary: number }
+  topMatches?: { name: string; pct: number; tag: string }[]
+  timeline?: { age: string; event: string; mirror: string }[]
+  versus?: { foe: string; foeTitle: string; diff: string }
   generated: boolean
 }
 
