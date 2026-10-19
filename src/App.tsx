@@ -1,23 +1,22 @@
 import { useState } from 'react'
 import './App.css'
-import { QUESTIONS, QUIZ, computeScores } from './lib/quiz'
+import { QUIZ } from './lib/quiz'
 import { supabase } from './lib/supabase'
 import { drawPoster, savePoster } from './lib/poster'
-import { generateResult } from './lib/llm'
-import type { LLMResult } from './lib/llm'
+import { generateQuiz, generateResult } from './lib/llm'
+import type { DynQuestion, LLMResult } from './lib/llm'
 
-type Stage = 'gate' | 'quiz' | 'divining' | 'result'
+type Stage = 'gate' | 'loading-quiz' | 'quiz' | 'divining' | 'result'
 
-const DIM_NAMES: Record<string, string> = {
-  order: '秩序抱负', insight: '局势洞察', boundary: '进退取舍',
-}
+const DIM_TAGS = ['世事', '人心', '取舍', '进退', '局中', '变局', '抉择', '人情', '自我', '时机', '分寸', '困局', '锋芒', '退路', '终局']
 
 export default function App() {
   const [stage, setStage] = useState<Stage>('gate')
   const [code, setCode] = useState('')
   const [codeErr, setCodeErr] = useState('')
+  const [questions, setQuestions] = useState<DynQuestion[] | null>(null)
   const [idx, setIdx] = useState(0)
-  const [answers, setAnswers] = useState<string[]>(Array(QUESTIONS.length).fill(''))
+  const [answers, setAnswers] = useState<string[]>([])
   const [llm, setLlm] = useState<LLMResult | null>(null)
   const [llmErr, setLlmErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -33,47 +32,55 @@ export default function App() {
     if (data === -1) { setCodeErr('密码无效，请检查后重试'); return }
     if (data === 0) { setCodeErr('该密码的测试次数已用完'); return }
     setCode(c)
-    setStage('quiz')
+    startQuiz()
+  }
+
+  async function startQuiz() {
+    setStage('loading-quiz'); setLlmErr('')
+    try {
+      const qs = await generateQuiz()
+      setQuestions(qs)
+      setAnswers(Array(qs.length).fill(''))
+      setIdx(0)
+      setStage('quiz')
+    } catch {
+      setLlmErr('出题受阻，请再试一次。')
+      setStage('result') // 复用错误视图
+    }
   }
 
   function choose(k: string) {
     const next = [...answers]; next[idx] = k
     setAnswers(next)
-    if (idx < QUESTIONS.length - 1) setTimeout(() => setIdx(idx + 1), 150)
+    if (idx < (questions?.length ?? 15) - 1) setTimeout(() => setIdx(idx + 1), 150)
   }
 
   async function finish() {
+    if (!questions) return
     setStage('divining')
-    setLlmErr('')
     setLlm(null)
     try {
-      const r = await generateResult(answers)
+      const r = await generateResult(answers, questions)
       setLlm(r)
       setStage('result')
     } catch (e) {
-      setLlmErr(String((e as Error).message ?? e))
+      setLlmErr(String((e as Error).message ?? e) + '（推衍受阻，可重试）')
+      setStage('result')
     }
     try {
-      await supabase.from('answers').insert({ code, answers: answers.join(''), result_key: llmPlaceholderKey(answers) })
+      await supabase.from('answers').insert({ code, answers: answers.join(''), result_key: 'llm:' + answers.join('') })
     } catch { /* 静默 */ }
-  }
-
-  function llmPlaceholderKey(ans: string[]) {
-    // 记录用：存答案串即可，人物由 LLM 动态得出，不再有固定 key
-    return 'llm:' + ans.join('')
   }
 
   async function handleSave() {
     if (!llm) return
-    const sc = computeScores(answers)
-    const dims = llm.dims ?? { order: sc.order, insight: sc.insight, boundary: sc.boundary }
     const blob = await drawPoster(
       {
         key: 'llm', name: llm.title, person: llm.person, fateLine: llm.fateLine,
         profile: llm.profile, strengths: llm.strengths, blindSpots: llm.blindSpots,
         advice: llm.advice, quote: llm.quote, shareTitle: llm.title,
       },
-      dims, false,
+      llm.dims ?? { order: 0, insight: 0, boundary: 0 }, false,
     )
     const how = await savePoster(blob)
     if (how === 'downloaded') alert('已开始下载。手机端若未直接进相册，请长按图片或到浏览器下载目录保存。')
@@ -85,18 +92,14 @@ export default function App() {
   }
 
   function restart() {
-    setAnswers(Array(QUESTIONS.length).fill('')); setIdx(0)
+    setQuestions(null); setAnswers([]); setIdx(0)
     setLlm(null); setLlmErr(''); setStage('quiz')
+    startQuiz()
   }
 
   async function retryLlm() {
-    setLlmErr(''); setStage('divining')
-    try {
-      const r = await generateResult(answers)
-      setLlm(r); setStage('result')
-    } catch (e) {
-      setLlmErr(String((e as Error).message ?? e))
-    }
+    if (!llm && llmErr.includes('推衍')) { setStage('divining'); return finish() }
+    startQuiz()
   }
 
   if (stage === 'gate') {
@@ -118,7 +121,7 @@ export default function App() {
           </button>
         </div>
         <div className="gate-meta">
-          <span>一码三用</span><span>十五问</span><span>约三分钟</span>
+          <span>一码三用</span><span>十五问</span><span>每卷皆新</span>
         </div>
         <p className="fine">{QUIZ.meta.disclaimer}</p>
         <div className="gate-seal">命理自鉴</div>
@@ -126,21 +129,32 @@ export default function App() {
     )
   }
 
-  if (stage === 'quiz') {
-    const q = QUESTIONS[idx]
+  if (stage === 'loading-quiz') {
+    return (
+      <div className="divining">
+        <p className="gate-eyebrow">研 墨 起 卷</p>
+        <div className="divining-orb"><span>出</span><span>题</span><span>中</span></div>
+        <p className="divining-text">正在为你拟一套全新的十五问……</p>
+        <p className="fine">大模型命题 · 每次测评的题目都不相同 · 约需十余秒</p>
+      </div>
+    )
+  }
+
+  if (stage === 'quiz' && questions) {
+    const q = questions[idx]
     const answered = answers.filter(Boolean).length
     return (
       <div className="quiz">
         <div className="quiz-head">
-          <p className="quiz-count"><b>{String(idx + 1).padStart(2, '0')}</b> ／ {QUESTIONS.length}</p>
-          <span className="quiz-dimtag">{DIM_NAMES[q.dim]}</span>
+          <p className="quiz-count"><b>{String(idx + 1).padStart(2, '0')}</b> ／ {questions.length}</p>
+          <span className="quiz-dimtag">{DIM_TAGS[idx % DIM_TAGS.length]}</span>
         </div>
-        <div className="progress"><div style={{ width: `${(answered / QUESTIONS.length) * 100}%` }} /></div>
+        <div className="progress"><div style={{ width: `${(answered / questions.length) * 100}%` }} /></div>
         <h2 className="qtext">{q.text}</h2>
         <div className="options">
-          {q.options.map(o => (
+          {q.options.map((o, j) => (
             <button
-              key={o.k}
+              key={j}
               className={`option ${answers[idx] === o.k ? 'selected' : ''}`}
               onClick={() => choose(o.k)}
             ><span className="k">{o.k}</span>{o.t}</button>
@@ -148,7 +162,7 @@ export default function App() {
         </div>
         <div className="quiz-nav">
           <button className="btn" disabled={idx === 0} onClick={() => setIdx(idx - 1)}>上一题</button>
-          {idx === QUESTIONS.length - 1
+          {idx === questions.length - 1
             ? <button className="btn primary" disabled={answers.some(a => !a) || busy} onClick={finish}>揭 晓</button>
             : <button className="btn primary" disabled={!answers[idx]} onClick={() => setIdx(idx + 1)}>下一题</button>}
         </div>
@@ -175,15 +189,12 @@ export default function App() {
         <p className="fine">{llmErr}</p>
         <div className="r-actions" style={{ marginTop: 30 }}>
           <button className="btn primary" onClick={retryLlm}>再 次 推 衍</button>
-          <button className="btn" onClick={restart}>回 到 首 题</button>
         </div>
       </div>
     )
   }
 
   const r = llm!
-  const sc = computeScores(answers)
-  const dims = r.dims ?? { order: sc.order, insight: sc.insight, boundary: sc.boundary }
   return (
     <div className="result">
       <p className="r-eyebrow">镜 中 人 已 现</p>
@@ -195,11 +206,13 @@ export default function App() {
       <div className="gold-rule" />
       <p className="r-fate">{r.fateLine}</p>
 
-      <div className="r-dims">
-        <div className="r-dim"><p className="v">{dims.order}<small> /15</small></p><p className="n">秩序抱负</p></div>
-        <div className="r-dim"><p className="v">{dims.insight}<small> /15</small></p><p className="n">局势洞察</p></div>
-        <div className="r-dim"><p className="v">{dims.boundary}<small> /15</small></p><p className="n">进退取舍</p></div>
-      </div>
+      {r.dims && (
+        <div className="r-dims">
+          <div className="r-dim"><p className="v">{r.dims.order}<small> /15</small></p><p className="n">秩序抱负</p></div>
+          <div className="r-dim"><p className="v">{r.dims.insight}<small> /15</small></p><p className="n">局势洞察</p></div>
+          <div className="r-dim"><p className="v">{r.dims.boundary}<small> /15</small></p><p className="n">进退取舍</p></div>
+        </div>
+      )}
 
       <div className="r-block"><h3>镜 中 人<span className="llm-hint ok"> · 专属推演</span></h3><p>{r.profile}</p></div>
       <div className="r-block"><h3>天 赋</h3><p>{r.strengths}</p></div>
