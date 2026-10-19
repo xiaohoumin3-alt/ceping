@@ -27,7 +27,7 @@ export function drawPoster(result: QuizResult, dimScores: Record<string, number>
 
     // 眉题
     ctx.fillStyle = 'rgba(201,169,97,0.85)'; ctx.font = '22px "Noto Serif SC", serif'
-    ctx.fillText('命 书 一 卷 · 照 见 古 今', W/2, 116)
+    ctx.fillText('三 国 命 书 · 照 见 兴 亡', W/2, 116)
     // 饰线
     ctx.strokeStyle = 'rgba(201,169,97,0.3)'
     ctx.beginPath(); ctx.moveTo(W/2-140, 140); ctx.lineTo(W/2+140, 140); ctx.stroke()
@@ -82,7 +82,7 @@ export function drawPoster(result: QuizResult, dimScores: Record<string, number>
     // 底部信息
     ctx.fillStyle = 'rgba(168,159,136,0.55)'; ctx.font = '20px "Noto Serif SC", serif'
     ctx.fillText('娱乐性自评 · 非心理诊断', W/2, H - 108)
-    ctx.fillText(QUIZ.meta.title, W/2, H - 76)
+    ctx.fillText('三国命运镜像测试', W/2, H - 76)
 
     canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/png')
   })

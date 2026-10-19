@@ -112,8 +112,8 @@ export default function App() {
     return (
       <div className="gate">
         <p className="gate-eyebrow">命 书 一 卷 · 照 见 古 今</p>
-        <h1 className="gate-title">古人<em>命运</em>镜像测试</h1>
-        <p className="gate-sub">十五问，照出你是哪位历史人物的命运原型</p>
+        <h1 className="gate-title">三国<em>命运</em>镜像测试</h1>
+        <p className="gate-sub">十五问，照出你是三国里的哪位人物</p>
         <p className="gate-ornament">❖ ❖ ❖</p>
         <div className="gate-form">
           <input
@@ -140,7 +140,7 @@ export default function App() {
       <div className="divining">
         <p className="gate-eyebrow">研 墨 起 卷</p>
         <div className="divining-orb"><span>出</span><span>题</span><span>中</span></div>
-        <p className="divining-text">正在为你拟一套全新的十五问……</p>
+        <p className="divining-text">正在为你拟一套全新的三国十五问……</p>
         <p className="fine">大模型命题 · 每次测评的题目都不相同 · 约需十余秒</p>
       </div>
     )
