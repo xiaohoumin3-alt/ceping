@@ -58,6 +58,10 @@ export async function generateResult(answers: string[], questions: DynQuestion[]
   return {
     person: d.person, title: d.title ?? '命运原型', fateLine: d.fateLine ?? '',
     profile: d.profile, strengths: d.strengths ?? '', blindSpots: d.blindSpots ?? '',
-    advice: d.advice ?? '', quote: d.quote ?? '', dims: d.dims, generated: true,
+    advice: d.advice ?? '', quote: d.quote ?? '', dims: d.dims,
+    topMatches: Array.isArray(d.topMatches) ? d.topMatches : undefined,
+    timeline: Array.isArray(d.timeline) ? d.timeline : undefined,
+    versus: d.versus?.foe ? d.versus : undefined,
+    generated: true,
   }
 }
