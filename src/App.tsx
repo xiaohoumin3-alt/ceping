@@ -6,6 +6,7 @@ import { drawPoster, savePoster } from './lib/poster'
 import { generateQuiz, generateResult } from './lib/llm'
 import type { DynQuestion, LLMResult } from './lib/llm'
 import { drawRadar, MatchBars, Timeline, VersusCard, DIM_META } from './components/viz'
+import Paywall from './components/Paywall'
 import { useEffect, useRef } from 'react'
 
 type Stage = 'gate' | 'loading-quiz' | 'quiz' | 'divining' | 'result'
@@ -23,6 +24,7 @@ export default function App() {
   const [llmErr, setLlmErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [unlocked, setUnlocked] = useState(false)
   const radarRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     if (llm?.dims && radarRef.current) drawRadar(radarRef.current, llm.dims)
@@ -74,7 +76,12 @@ export default function App() {
       setStage('result')
     }
     try {
-      await supabase.from('answers').insert({ code, answers: answers.join(''), result_key: 'llm:' + answers.join('') })
+      const { data, error } = await supabase
+        .from('answers')
+        .insert({ code, answers: answers.join(''), result_key: 'llm:' + answers.join('') })
+        .select('id')
+        .single()
+      if (!error && data?.id) (window as any).__lastAnswerId = data.id
     } catch { /* 静默 */ }
   }
 
@@ -201,6 +208,8 @@ export default function App() {
   }
 
   const r = llm!
+  // 免费层：人物名 + 称号 + 命线一句话 + 五维雷达图
+  // 付费层：镜中人/天赋/盲区/赠言 + 三个可视化 + 命书海报 + 赠言金句
   return (
     <div className="result">
       <p className="r-eyebrow">镜 中 人 已 现</p>
@@ -217,6 +226,16 @@ export default function App() {
           <canvas ref={radarRef} width={320} height={250} />
         </div>
       )}
+
+      {!unlocked && (
+        <>
+          <p className="free-hint">▲ 你的五维命盘已免费揭开 · 完整命书待启</p>
+          <Paywall onPaid={() => setUnlocked(true)} />
+        </>
+      )}
+
+      {unlocked && (
+        <>
       {r.dimComments && (
         <div className="dim-comments">
           {DIM_META.map(m => (
@@ -258,9 +277,8 @@ export default function App() {
         <button className="btn" onClick={handleCopyLink}>{copied ? '已 复 制 ✓' : '分 享 镜 像'}</button>
         <button className="btn" onClick={restart}>再 照 一 次</button>
       </div>
-      <div className="praise">
-        给店铺留下好评后，联系客服发送好评截图，即可获得 1 元返现。感谢你与镜中人的相遇。
-      </div>
+        </>
+      )}
       <p className="fine">{QUIZ.meta.disclaimer}</p>
     </div>
   )
