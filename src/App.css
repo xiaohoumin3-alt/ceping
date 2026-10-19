@@ -229,3 +229,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .r-person, .r-seal { animation: none; }
 }
+
+.llm-hint { color: var(--paper-dim); font-size: 11px; letter-spacing: 1px; font-weight: 400; }
+.llm-hint.ok { color: var(--gold); }
+@keyframes pulse { 50% { opacity: .4; } }
+.llm-hint:not(.ok) { animation: pulse 1.4s ease-in-out infinite; }

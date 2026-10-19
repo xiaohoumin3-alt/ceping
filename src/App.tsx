@@ -4,6 +4,8 @@ import { QUESTIONS, QUIZ, evaluate, computeScores } from './lib/quiz'
 import type { QuizResult } from './lib/quiz'
 import { supabase } from './lib/supabase'
 import { drawPoster, savePoster } from './lib/poster'
+import { generateInterpretation } from './lib/llm'
+import type { LLMResult } from './lib/llm'
 
 type Stage = 'gate' | 'quiz' | 'result'
 
@@ -18,6 +20,8 @@ export default function App() {
   const [idx, setIdx] = useState(0)
   const [answers, setAnswers] = useState<string[]>(Array(QUESTIONS.length).fill(''))
   const [result, setResult] = useState<QuizResult | null>(null)
+  const [interpretation, setInterpretation] = useState<LLMResult | null>(null)
+  const [llmLoading, setLlmLoading] = useState(false)
   const [nearTie, setNearTie] = useState(false)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -45,11 +49,17 @@ export default function App() {
     setBusy(true)
     const { result, nearTie } = evaluate(answers)
     setResult(result); setNearTie(nearTie)
+    const sc = computeScores(answers)
+    // 先展示基础结果，LLM 解读异步补充
+    setStage('result')
+    setLlmLoading(true)
+    generateInterpretation(answers, sc, result.key, result.name, result.person, result.fateLine, nearTie)
+      .then(interp => { setInterpretation(interp); setLlmLoading(false) })
+      .catch(() => { setLlmLoading(false) })
     try {
       await supabase.from('answers').insert({ code, answers: answers.join(''), result_key: result.key })
     } catch { /* 静默 */ }
     setBusy(false)
-    setStage('result')
   }
 
   async function handleSave() {
@@ -68,7 +78,7 @@ export default function App() {
 
   function restart() {
     setAnswers(Array(QUESTIONS.length).fill('')); setIdx(0)
-    setResult(null); setStage('quiz')
+    setResult(null); setInterpretation(null); setStage('quiz')
   }
 
   if (stage === 'gate') {
@@ -149,12 +159,15 @@ export default function App() {
         <div className="r-dim"><p className="v">{sc.boundary}<small> /15</small></p><p className="n">进退取舍</p></div>
       </div>
 
-      <div className="r-block"><h3>镜 中 人</h3><p>{r.profile}</p></div>
-      <div className="r-block"><h3>天 赋</h3><p>{r.strengths}</p></div>
-      <div className="r-block"><h3>盲 区</h3><p>{r.blindSpots}</p></div>
-      <div className="r-block"><h3>赠 言</h3><p>{r.advice}</p></div>
+      <div className="r-block">
+        <h3>镜 中 人{llmLoading && <span className="llm-hint"> · 命书撰写中…</span>}{interpretation?.generated && <span className="llm-hint ok"> · 专属解读</span>}</h3>
+        <p>{llmLoading && !interpretation ? r.profile : (interpretation?.profile ?? r.profile)}</p>
+      </div>
+      <div className="r-block"><h3>天 赋</h3><p>{interpretation?.strengths ?? r.strengths}</p></div>
+      <div className="r-block"><h3>盲 区</h3><p>{interpretation?.blindSpots ?? r.blindSpots}</p></div>
+      <div className="r-block"><h3>赠 言</h3><p>{interpretation?.advice ?? r.advice}</p></div>
 
-      <p className="r-quote">{r.quote}</p>
+      <p className="r-quote">{interpretation?.quote ?? r.quote}</p>
       {nearTie && <p className="r-mixed">※ 混合型倾向：你的画像接近两种原型的交界</p>}
 
       <div className="r-actions">
