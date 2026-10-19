@@ -10,7 +10,7 @@ function callLLM(system, user, temperature) {
     model: 'hunyuan-2.0-instruct-20251111',
     messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
     temperature,
-  }).then(res => res?.choices?.[0]?.message?.content ?? res?.text ?? '')
+  }, { timeout: 90000 }).then(res => res?.choices?.[0]?.message?.content ?? res?.text ?? '')
 }
 
 function extractJSON(raw) {
@@ -54,7 +54,6 @@ exports.main = async (event) => {
 
   try {
     if (action === 'generate_quiz') {
-      // 每次动态生成 15 道题：随机指定主题方向，保证不同用户/同一用户不同次拿到不同题
       const themes = ['职场处境', '家庭与亲缘', '朋友与人情往来', '金钱与利益', '爱情与亲密关系', '陌生人社交', '网络与线上生活', '消费与生活方式', '突发意外处境', '长期人生抉择']
       const picked = []
       while (picked.length < 3) {
@@ -62,29 +61,34 @@ exports.main = async (event) => {
         if (!picked.includes(t)) picked.push(t)
       }
       const seed = Date.now() + Math.floor(Math.random() * 1e6)
-      let raw = ''
-      for (let attempt = 0; attempt < 3 && !raw; attempt++) {
-        try {
-          raw = await callLLM(
-            '你是资深中文测评出题人，输出严格 JSON 数组，无多余文字。',
-        `为「三国命运镜像测试」出一套 15 道情境选择题。要求：
-- 其中约 9 道围绕这三个主题领域：${picked.join('、')}（各至少 2 道）；其余 6 道自由选择日常生活领域
-- 每道题：一个中国当代真实生活情境（具体到场景细节，不抽象），4 个选项（都是普通人会有的真实反应，无道德标准答案，无搞笑选项）
-- 15 道题覆盖不同心理面向：面对混乱/规则、读懂人心/局势、利益/情面/自我的取舍、冒险与安稳、坚持与放弃
-- 相邻题不考同一个面向；题目间情境不重复
-- 随机种子 ${seed}，请据此让本题组与常见题组明显不同
+      const quizPrompt = (n, extra) => `为「三国命运镜像测试」出 ${n} 道情境选择题。${extra}要求：
+- 中国当代真实生活情境（具体到场景细节，不抽象），4 个选项（都是普通人会有的真实反应，无道德标准答案）
+- 覆盖不同心理面向：面对混乱/规则、读懂人心/局势、利益/情面/自我的取舍、冒险与安稳
+- 随机种子 ${seed}-${n}，题组要新颖
 输出 JSON 数组（不要 markdown 代码块）：
-[{"text":"题目文本30-60字","options":[{"k":"A","t":"选项18-30字"},{"k":"B","t":"..."},{"k":"C","t":"..."},{"k":"D","t":"..."}]}, ... 恰好15项]`,
-            1.0,
-          )
-        } catch { /* 重试 */ }
-        if (!raw) await new Promise(r => setTimeout(r, 800))
+[{"text":"题目30-55字","options":[{"k":"A","t":"选项16-26字"},{"k":"B","t":"..."},{"k":"C","t":"..."},{"k":"D","t":"..."]}, ...恰好${n}项]`
+      // 分批出题：每批 5 题（单次输出短，规避上游长生成超时），共 3 批
+      const quiz = []
+      const batches = [
+        quizPrompt(5, `其中 2 道围绕「${picked[0]}」，1 道围绕「${picked[1]}」。`),
+        quizPrompt(5, `其中 2 道围绕「${picked[1]}」，1 道围绕「${picked[2]}」。不要与这些常见情境重复：水管爆裂、借钱、电梯故障。`),
+        quizPrompt(5, `其中 2 道围绕「${picked[2]}」，其余自由。不要与这些常见情境重复：借钱、领导甩锅、同事站队。`),
+      ]
+      for (let b = 0; b < batches.length; b++) {
+        let raw = ''
+        for (let attempt = 0; attempt < 3 && !raw; attempt++) {
+          try {
+            raw = await callLLM('你是资深中文测评出题人，输出严格 JSON 数组，无多余文字。', batches[b], 1.0)
+          } catch { /* 重试 */ }
+          if (!raw) await new Promise(r => setTimeout(r, 600))
+        }
+        const part = extractJSON(raw)
+        if (Array.isArray(part)) quiz.push(...part.filter(q => q && q.text && Array.isArray(q.options)))
       }
-      const quiz = extractJSON(raw)
-      if (!Array.isArray(quiz) || quiz.length < 15) {
-        return { error: 'quiz generation incomplete', got: Array.isArray(quiz) ? quiz.length : String(raw).slice(0, 200) }
+      if (quiz.length < 15) {
+        return { error: 'quiz generation incomplete', got: quiz.length }
       }
-      return { questions: quiz.slice(0, 15), generated: true }
+      return { questions: quiz.slice(0, 15).map(q => ({ text: String(q.text), options: q.options.slice(0, 4) })), generated: true }
     }
 
     // action=interpret

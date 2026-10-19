@@ -44,8 +44,17 @@ export async function generateQuiz(): Promise<DynQuestion[]> {
 
 /** 基于用户对动态题的选择，LLM 推理人物原型+全文案 */
 export async function generateResult(answers: string[], questions: DynQuestion[]): Promise<LLMResult> {
-  const d = await post({ answers, questions }, 120000)
+  let d = await post({ answers, questions }, 120000)
   if (d.error || !d.person || !d.profile) throw new Error(d.error ?? 'incomplete')
+  // 图表数据（topMatches/timeline/versus）偶发被截断容错丢弃——缺则重取一次
+  if (!d.topMatches || !d.timeline || !d.versus) {
+    try {
+      const d2 = await post({ answers, questions }, 120000)
+      if (!d2.error && d2.person) {
+        d = { ...d, ...Object.fromEntries(Object.entries(d2).filter(([k, v]) => v != null && !(k in d && d[k] != null))) }
+      }
+    } catch { /* 保留已有字段 */ }
+  }
   return {
     person: d.person, title: d.title ?? '命运原型', fateLine: d.fateLine ?? '',
     profile: d.profile, strengths: d.strengths ?? '', blindSpots: d.blindSpots ?? '',
