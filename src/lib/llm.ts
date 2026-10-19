@@ -5,7 +5,8 @@ export interface DynQuestion { text: string; options: { k: string; t: string }[]
 export interface LLMResult {
   person: string; title: string; fateLine: string
   profile: string; strengths: string; blindSpots: string; advice: string; quote: string
-  dims?: { order: number; insight: number; boundary: number }
+  dims?: Record<string, number>
+  dimComments?: Record<string, string>
   topMatches?: { name: string; pct: number; tag: string }[]
   timeline?: { age: string; event: string; mirror: string }[]
   versus?: { foe: string; foeTitle: string; diff: string }
@@ -58,7 +59,7 @@ export async function generateResult(answers: string[], questions: DynQuestion[]
   return {
     person: d.person, title: d.title ?? '命运原型', fateLine: d.fateLine ?? '',
     profile: d.profile, strengths: d.strengths ?? '', blindSpots: d.blindSpots ?? '',
-    advice: d.advice ?? '', quote: d.quote ?? '', dims: d.dims,
+    advice: d.advice ?? '', quote: d.quote ?? '', dims: d.dims, dimComments: d.dimComments,
     topMatches: Array.isArray(d.topMatches) ? d.topMatches : undefined,
     timeline: Array.isArray(d.timeline) ? d.timeline : undefined,
     versus: d.versus?.foe ? d.versus : undefined,

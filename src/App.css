@@ -299,3 +299,8 @@ body {
 .versus-diff { margin-top: 14px; font-size: 14px; color: var(--paper); line-height: 1.8; text-align: left; padding: 0 4px; }
 .versus-diff::before { content: '判词 '; color: var(--cinnabar); font-size: 12px; letter-spacing: 2px; }
 .match-group { margin-top: 4px; }
+
+/* 五维夸赞短语 */
+.dim-comments { text-align: left; margin: 10px auto 0; max-width: 360px; }
+.dim-comments p { font-size: 13px; color: var(--paper-dim); margin-top: 8px; line-height: 1.6; }
+.dim-comments p b { color: var(--gold); font-weight: 600; margin-right: 10px; letter-spacing: 2px; }

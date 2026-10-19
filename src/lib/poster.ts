@@ -3,7 +3,7 @@ import type { QuizResult } from './quiz'
 
 const W = 750, H = 1334
 
-export function drawPoster(result: QuizResult, dimScores: Record<string, number>, nearTie: boolean): Promise<Blob> {
+export function drawPoster(result: QuizResult, dimScores: Record<string, number>, _nearTie?: boolean): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
     canvas.width = W; canvas.height = H
@@ -41,15 +41,21 @@ export function drawPoster(result: QuizResult, dimScores: Record<string, number>
     ctx.fillStyle = 'rgba(232,221,196,0.75)'; ctx.font = '26px "Noto Serif SC", serif'
     wrapText(ctx, result.fateLine, W/2, 396, 560, 42)
 
-    // 维度分（三列）
-    const dims = [['秩序抱负', dimScores.order], ['局势洞察', dimScores.insight], ['进退取舍', dimScores.boundary]] as const
-    const dx = [W/2-200, W/2, W/2+200]
-    dims.forEach(([n, v], i) => {
-      ctx.fillStyle = '#e6c98a'; ctx.font = '700 46px "Noto Serif SC", serif'
-      ctx.fillText(String(v), dx[i], 520)
-      ctx.fillStyle = 'rgba(168,159,136,0.9)'; ctx.font = '20px "Noto Serif SC", serif'
-      ctx.fillText(n, dx[i], 556)
+    // 维度分（五行小条）
+    const DIM5 = [['格局抱负','vision'],['洞察判断','insight'],['坚韧执行','grit'],['温情义气','warmth'],['沉稳定力','composure']] as const
+    let dy = 500
+    DIM5.forEach(([n, k]) => {
+      const v = Math.min(Math.max((dimScores as Record<string, number>)[k] ?? 0, 0), 15)
+      ctx.textAlign = 'left'
+      ctx.fillStyle = 'rgba(168,159,136,0.9)'; ctx.font = '22px "Noto Serif SC", serif'
+      ctx.fillText(n, 140, dy)
+      ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(300, dy - 18, 300, 22)
+      ctx.fillStyle = '#c9a86a'; ctx.fillRect(300, dy - 18, 300 * (v / 15), 22)
+      ctx.fillStyle = '#e6c98a'; ctx.font = '20px "Noto Serif SC", serif'
+      ctx.fillText(String(v), 620, dy)
+      dy += 44
     })
+    ctx.textAlign = 'center'
 
     // 分隔双线
     ctx.strokeStyle = 'rgba(201,169,97,0.25)'
@@ -67,12 +73,6 @@ export function drawPoster(result: QuizResult, dimScores: Record<string, number>
     if (y < 1120) {
       ctx.fillStyle = 'rgba(168,159,136,0.9)'; ctx.font = '24px "Noto Serif SC", serif'
       y = wrapText(ctx, `"${result.quote}"`, W/2, y + 40, 580, 38) + 10
-    }
-
-    // 混合型
-    if (nearTie) {
-      ctx.fillStyle = 'rgba(195,64,47,0.85)'; ctx.font = '22px "Noto Serif SC", serif'
-      ctx.fillText('※ 混合型倾向：接近两种原型的交界', W/2, Math.min(y + 36, 1150))
     }
 
     // 朱砂印章（右下）

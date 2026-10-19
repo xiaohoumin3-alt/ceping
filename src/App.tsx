@@ -5,7 +5,7 @@ import { supabase } from './lib/supabase'
 import { drawPoster, savePoster } from './lib/poster'
 import { generateQuiz, generateResult } from './lib/llm'
 import type { DynQuestion, LLMResult } from './lib/llm'
-import { drawRadar, MatchBars, Timeline, VersusCard } from './components/viz'
+import { drawRadar, MatchBars, Timeline, VersusCard, DIM_META } from './components/viz'
 import { useEffect, useRef } from 'react'
 
 type Stage = 'gate' | 'loading-quiz' | 'quiz' | 'divining' | 'result'
@@ -86,7 +86,7 @@ export default function App() {
         profile: llm.profile, strengths: llm.strengths, blindSpots: llm.blindSpots,
         advice: llm.advice, quote: llm.quote, shareTitle: llm.title,
       },
-      llm.dims ?? { order: 0, insight: 0, boundary: 0 }, false,
+      llm.dims ?? {}, false,
     )
     const how = await savePoster(blob)
     if (how === 'downloaded') alert('已开始下载。手机端若未直接进相册，请长按图片或到浏览器下载目录保存。')
@@ -214,7 +214,14 @@ export default function App() {
 
       {r.dims && (
         <div className="radar-wrap">
-          <canvas ref={radarRef} width={280} height={230} />
+          <canvas ref={radarRef} width={320} height={250} />
+        </div>
+      )}
+      {r.dimComments && (
+        <div className="dim-comments">
+          {DIM_META.map(m => (
+            <p key={m.key}><b>{m.name}</b>{r.dimComments![m.key]}</p>
+          ))}
         </div>
       )}
 

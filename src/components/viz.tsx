@@ -1,19 +1,27 @@
 // 结果页可视化组件：雷达图 / 相似度条 / 人生时间轴 / 对照卡 —— Canvas+CSS 实现
 
-/** 三维雷达图（Canvas，玄墨金风格） */
-export function drawRadar(canvas: HTMLCanvasElement, dims: { order: number; insight: number; boundary: number }) {
+/** 五维雷达图（Canvas，玄墨金风格）· 参考 Big Five 五维框架 */
+export const DIM_META = [
+  { key: 'vision', name: '格局抱负' },
+  { key: 'insight', name: '洞察判断' },
+  { key: 'grit', name: '坚韧执行' },
+  { key: 'warmth', name: '温情义气' },
+  { key: 'composure', name: '沉稳定力' },
+] as const
+
+export function drawRadar(canvas: HTMLCanvasElement, dims: Record<string, number>) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   const W = canvas.width, H = canvas.height
-  const cx = W / 2, cy = H / 2 + 6, R = Math.min(W, H) / 2 - 34
+  const cx = W / 2, cy = H / 2 + 6, R = Math.min(W, H) / 2 - 30
   ctx.clearRect(0, 0, W, H)
 
-  const labels = ['秩序抱负', '局势洞察', '进退取舍']
-  const vals = [dims.order / 15, dims.insight / 15, dims.boundary / 15]
-  const N = 3
+  const labels = DIM_META.map(d => d.name)
+  const vals = DIM_META.map(d => Math.min(Math.max(dims[d.key] ?? 0, 0), 15) / 15)
+  const N = 5
   const angle = (i: number) => -Math.PI / 2 + (i * 2 * Math.PI) / N
 
-  // 网格（3 层三角）
+  // 网格（3 层多边形）
   for (let ring = 1; ring <= 3; ring++) {
     ctx.beginPath()
     for (let i = 0; i <= N; i++) {
