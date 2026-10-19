@@ -304,3 +304,18 @@ body {
 .dim-comments { text-align: left; margin: 10px auto 0; max-width: 360px; }
 .dim-comments p { font-size: 13px; color: var(--paper-dim); margin-top: 8px; line-height: 1.6; }
 .dim-comments p b { color: var(--gold); font-weight: 600; margin-right: 10px; letter-spacing: 2px; }
+
+/* ===== Paywall 付费墙（命书解锁）===== */
+.free-hint { text-align: center; font-size: 13px; color: var(--gold-bright); letter-spacing: 2px; margin: 18px 0 4px; }
+.paywall {
+  margin: 26px auto 10px; max-width: 420px; text-align: center;
+  border: 1px solid rgba(201,169,97,0.35); border-radius: 6px;
+  padding: 28px 22px 22px; background: rgba(201,169,97,0.04);
+}
+.pw-ornament { font-size: 13px; letter-spacing: 4px; color: var(--gold-bright); margin-bottom: 14px; }
+.pw-lead { font-size: 14px; color: var(--paper-dim); line-height: 1.8; margin-bottom: 16px; }
+.pw-list { list-style: none; text-align: left; margin: 0 auto 18px; max-width: 260px; }
+.pw-list li { font-size: 14px; color: var(--paper); padding: 5px 0 5px 20px; position: relative; letter-spacing: 1px; }
+.pw-list li::before { content: '❖'; position: absolute; left: 0; color: var(--gold); font-size: 11px; top: 7px; }
+.pw-btn { width: 100%; font-size: 16px; letter-spacing: 2px; }
+.pw-qr { margin: 12px auto; display: block; border: 8px solid #fff; border-radius: 4px; }
