@@ -319,3 +319,7 @@ body {
 .pw-list li::before { content: '❖'; position: absolute; left: 0; color: var(--gold); font-size: 11px; top: 7px; }
 .pw-btn { width: 100%; font-size: 16px; letter-spacing: 2px; }
 .pw-qr { margin: 12px auto; display: block; border: 8px solid #fff; border-radius: 4px; }
+
+/* EN 版标题自适应 */
+.gate-title { max-width: 92vw; }
+html[lang] .gate-title { font-size: clamp(2rem, 8vw, 4rem); }
