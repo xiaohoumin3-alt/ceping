@@ -322,4 +322,6 @@ body {
 
 /* EN 版标题自适应：硬覆盖 44px 固定字号 */
 .gate-title { max-width: 92vw; }
-:lang(en) .gate-title { font-size: clamp(1.6rem, 7vw, 3rem); letter-spacing: 2px; }
+:lang(en) .gate-title { font-size: 32px !important; letter-spacing: 1px !important; word-break: keep-all; }
+:lang(en) .gate-title em { display: inline-block; margin: 0 2px; }
+@media (max-width: 480px) { :lang(en) .gate-title { font-size: 26px !important; } }
