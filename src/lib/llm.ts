@@ -27,9 +27,9 @@ async function post(body: unknown, timeoutMs: number): Promise<any> {
 }
 
 /** 动态生成 15 道题（云函数内部带重试；此处再兜底重试一次） */
-export async function generateQuiz(): Promise<DynQuestion[]> {
+export async function generateQuiz(lang: 'zh' | 'en' = 'zh'): Promise<DynQuestion[]> {
   for (let i = 0; i < 2; i++) {
-    const d = await post({ action: 'generate_quiz' }, 120000)
+    const d = await post({ action: 'generate_quiz', lang }, 120000)
     if (Array.isArray(d.questions) && d.questions.length === 15) {
       // 规整：确保 4 选项且 k 为 A-D
       return d.questions.map((q: DynQuestion) => ({
@@ -44,8 +44,8 @@ export async function generateQuiz(): Promise<DynQuestion[]> {
 }
 
 /** 基于用户对动态题的选择，LLM 推理人物原型+全文案 */
-export async function generateResult(answers: string[], questions: DynQuestion[]): Promise<LLMResult> {
-  let d = await post({ answers, questions }, 120000)
+export async function generateResult(answers: string[], questions: DynQuestion[], lang: 'zh' | 'en' = 'zh'): Promise<LLMResult> {
+  let d = await post({ answers, questions, lang }, 120000)
   if (d.error || !d.person || !d.profile) throw new Error(d.error ?? 'incomplete')
   // 图表数据（topMatches/timeline/versus）偶发被截断容错丢弃——缺则重取一次
   if (!d.topMatches || !d.timeline || !d.versus) {
