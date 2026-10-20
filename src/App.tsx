@@ -139,8 +139,8 @@ export default function App() {
         <div className="gate-meta">
           <>{t.meta.map((m: string) => <span key={m}>{m}</span>)}</>
         </div>
-        <p className="fine">{QUIZ.meta.disclaimer}</p>
-        <div className="gate-seal">命理自鉴</div>
+        <p className="fine">{lang === 'en' ? 'Entertainment self-reflection only. Not psychological diagnosis. Does not predict real fate.' : QUIZ.meta.disclaimer}</p>
+        <div className="gate-seal">{lang === 'en' ? 'SELF MIRROR' : '命理自鉴'}</div>
       </div>
     )
   }
@@ -282,7 +282,7 @@ export default function App() {
       </div>
         </>
       )}
-      <p className="fine">{QUIZ.meta.disclaimer}</p>
+      <p className="fine">{lang === 'en' ? 'Entertainment self-reflection only. Not psychological diagnosis. Does not predict real fate.' : QUIZ.meta.disclaimer}</p>
     </div>
   )
 }
