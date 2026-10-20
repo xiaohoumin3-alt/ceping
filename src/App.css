@@ -320,6 +320,6 @@ body {
 .pw-btn { width: 100%; font-size: 16px; letter-spacing: 2px; }
 .pw-qr { margin: 12px auto; display: block; border: 8px solid #fff; border-radius: 4px; }
 
-/* EN 版标题自适应 */
+/* EN 版标题自适应：硬覆盖 44px 固定字号 */
 .gate-title { max-width: 92vw; }
-html[lang] .gate-title { font-size: clamp(2rem, 8vw, 4rem); }
+:lang(en) .gate-title { font-size: clamp(1.6rem, 7vw, 3rem); letter-spacing: 2px; }
