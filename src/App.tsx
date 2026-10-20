@@ -8,6 +8,7 @@ import type { DynQuestion, LLMResult } from './lib/llm'
 import { drawRadar, MatchBars, Timeline, VersusCard, DIM_META } from './components/viz'
 import Paywall from './components/Paywall'
 import { useEffect, useRef } from 'react'
+import { detectLang, T, type Lang } from './lib/i18n'
 
 type Stage = 'gate' | 'loading-quiz' | 'quiz' | 'divining' | 'result'
 
@@ -25,6 +26,8 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const [unlocked, setUnlocked] = useState(false)
+  const [lang] = useState<Lang>(detectLang)
+  const t = T[lang]
   const radarRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     if (llm?.dims && radarRef.current) drawRadar(radarRef.current, llm.dims)
@@ -46,7 +49,7 @@ export default function App() {
   async function startQuiz() {
     setStage('loading-quiz'); setLlmErr('')
     try {
-      const qs = await generateQuiz()
+      const qs = await generateQuiz(lang)
       setQuestions(qs)
       setAnswers(Array(qs.length).fill(''))
       setIdx(0)
@@ -68,7 +71,7 @@ export default function App() {
     setStage('divining')
     setLlm(null)
     try {
-      const r = await generateResult(answers, questions)
+      const r = await generateResult(answers, questions, lang)
       setLlm(r)
       setStage('result')
     } catch (e) {
@@ -118,23 +121,23 @@ export default function App() {
   if (stage === 'gate') {
     return (
       <div className="gate">
-        <p className="gate-eyebrow">命 书 一 卷 · 照 见 古 今</p>
-        <h1 className="gate-title">三国<em>命运</em>镜像测试</h1>
-        <p className="gate-sub">十五问，照出你是三国里的哪位人物</p>
-        <p className="gate-ornament">❖ ❖ ❖</p>
+        <p className="gate-eyebrow">{t.eyebrow}</p>
+        <h1 className="gate-title">{t.titleA}<em>{t.titleEm}</em>{t.titleB}</h1>
+        <p className="gate-sub">{t.sub}</p>
+        <p className="gate-ornament">{t.ornament}</p>
         <div className="gate-form">
           <input
-            className="code-input" type="text" placeholder="请输入测评密码"
+            className="code-input" type="text" placeholder={t.codePh}
             value={code} onChange={e => setCode(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleEnter()}
           />
           {codeErr && <p className="err">{codeErr}</p>}
           <button className="btn primary" style={{ marginTop: 22 }} disabled={busy || !code.trim()} onClick={handleEnter}>
-            {busy ? '推 衍 中 …' : '启 卷'}
+            {busy ? t.entering : t.enter}
           </button>
         </div>
         <div className="gate-meta">
-          <span>一码三用</span><span>十五问</span><span>每卷皆新</span>
+          <>{t.meta.map((m: string) => <span key={m}>{m}</span>)}</>
         </div>
         <p className="fine">{QUIZ.meta.disclaimer}</p>
         <div className="gate-seal">命理自鉴</div>
@@ -145,10 +148,10 @@ export default function App() {
   if (stage === 'loading-quiz') {
     return (
       <div className="divining">
-        <p className="gate-eyebrow">研 墨 起 卷</p>
-        <div className="divining-orb"><span>出</span><span>题</span><span>中</span></div>
-        <p className="divining-text">正在为你拟一套全新的三国十五问……</p>
-        <p className="fine">大模型命题 · 每次测评的题目都不相同 · 约需十余秒</p>
+        <p className="gate-eyebrow">{t.quizEyebrowLoading}</p>
+        <div className="divining-orb">{t.orb.map((c: string, i: number) => <span key={i}>{c}</span>)}</div>
+        <p className="divining-text">{t.loadingQuiz}</p>
+        <p className="fine">{t.loadingQuizFine}</p>
       </div>
     )
   }
@@ -159,7 +162,7 @@ export default function App() {
     return (
       <div className="quiz">
         <div className="quiz-head">
-          <p className="quiz-count"><b>{String(idx + 1).padStart(2, '0')}</b> ／ {questions.length}</p>
+          <p className="quiz-count"><b>{t.quizCount(idx, questions.length)}</b></p>
           <span className="quiz-dimtag">{DIM_TAGS[idx % DIM_TAGS.length]}</span>
         </div>
         <div className="progress"><div style={{ width: `${(answered / questions.length) * 100}%` }} /></div>
@@ -174,10 +177,10 @@ export default function App() {
           ))}
         </div>
         <div className="quiz-nav">
-          <button className="btn" disabled={idx === 0} onClick={() => setIdx(idx - 1)}>上一题</button>
+          <button className="btn" disabled={idx === 0} onClick={() => setIdx(idx - 1)}>{t.prev}</button>
           {idx === questions.length - 1
-            ? <button className="btn primary" disabled={answers.some(a => !a) || busy} onClick={finish}>揭 晓</button>
-            : <button className="btn primary" disabled={!answers[idx]} onClick={() => setIdx(idx + 1)}>下一题</button>}
+            ? <button className="btn primary" disabled={answers.some(a => !a) || busy} onClick={finish}>{t.finish}</button>
+            : <button className="btn primary" disabled={!answers[idx]} onClick={() => setIdx(idx + 1)}>{t.next}</button>}
         </div>
       </div>
     )
@@ -186,10 +189,10 @@ export default function App() {
   if (stage === 'divining') {
     return (
       <div className="divining">
-        <p className="gate-eyebrow">焚 香 推 衍</p>
-        <div className="divining-orb"><span>推</span><span>衍</span><span>中</span></div>
-        <p className="divining-text">命盘已成，镜中人正在浮现……</p>
-        <p className="fine">大模型正在通读你的十五个选择，为你推演命运原型 · 约需十余秒</p>
+        <p className="gate-eyebrow">{t.diviningEyebrow}</p>
+        <div className="divining-orb">{t.orbDivining.map((c: string, i: number) => <span key={i}>{c}</span>)}</div>
+        <p className="divining-text">{t.diviningText}</p>
+        <p className="fine">{t.diviningFine}</p>
       </div>
     )
   }
@@ -212,10 +215,10 @@ export default function App() {
   // 付费层：镜中人/天赋/盲区/赠言 + 三个可视化 + 命书海报 + 赠言金句
   return (
     <div className="result">
-      <p className="r-eyebrow">镜 中 人 已 现</p>
+      <p className="r-eyebrow">{t.resultEyebrow}</p>
       <div className="r-person-wrap">
         <h1 className="r-person">{r.person}</h1>
-        <span className="r-seal">命运印证</span>
+        <span className="r-seal">{t.seal}</span>
       </div>
       <p className="r-name">{r.title}</p>
       <div className="gold-rule" />
@@ -229,8 +232,8 @@ export default function App() {
 
       {!unlocked && (
         <>
-          <p className="free-hint">▲ 你的五维命盘已免费揭开 · 完整命书待启</p>
-          <Paywall onPaid={() => setUnlocked(true)} />
+          <p className="free-hint">{t.freeHint}</p>
+          <Paywall onPaid={() => setUnlocked(true)} lang={lang} answerId={(window as any).__lastAnswerId ?? null} />
         </>
       )}
 
