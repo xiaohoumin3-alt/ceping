@@ -121,26 +121,30 @@ export default function App() {
   if (stage === 'gate') {
     return (
       <div className="gate">
-        <p className="gate-eyebrow">{t.eyebrow}</p>
-        <h1 className="gate-title">{t.titleA}<em>{t.titleEm}</em>{t.titleB}</h1>
-        <p className="gate-sub">{t.sub}</p>
-        <p className="gate-ornament">{t.ornament}</p>
-        <div className="gate-form">
-          <input
-            className="code-input" type="text" placeholder={t.codePh}
-            value={code} onChange={e => setCode(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleEnter()}
-          />
-          {codeErr && <p className="err">{codeErr}</p>}
-          <button className="btn primary" style={{ marginTop: 22 }} disabled={busy || !code.trim()} onClick={handleEnter}>
-            {busy ? t.entering : t.enter}
-          </button>
+        <div className="gate-scroll">
+          <p className="gate-eyebrow">{t.eyebrow}</p>
+          <div className="gate-title-wrap">
+            <h1 className="gate-title">{lang === 'zh' ? <>{t.titleA}<em>{t.titleEm}</em><br/>{t.titleB}</> : <>{t.titleA} <em>{t.titleEm}</em> {t.titleB}</>}</h1>
+          </div>
+          <p className="gate-sub">{t.sub}</p>
+          <p className="gate-ornament">{t.ornament}</p>
+          <div className="gate-form">
+            <input
+              className="code-input" type="text" placeholder={t.codePh}
+              value={code} onChange={e => setCode(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleEnter()}
+            />
+            {codeErr && <p className="err">{codeErr}</p>}
+            <button className="btn primary" style={{ marginTop: 22 }} disabled={busy || !code.trim()} onClick={handleEnter}>
+              {busy ? t.entering : t.enter}
+            </button>
+          </div>
+          <div className="gate-meta">
+            {t.meta.map((m: string) => <span key={m}>{m}</span>)}
+          </div>
+          <p className="fine">{lang === 'en' ? 'Entertainment self-reflection only. Not psychological diagnosis. Does not predict real fate.' : QUIZ.meta.disclaimer}</p>
+          <div className="gate-seal">{lang === 'en' ? <>SELF<br/>MIRROR</> : <>命理<br/>自鉴</>}</div>
         </div>
-        <div className="gate-meta">
-          <>{t.meta.map((m: string) => <span key={m}>{m}</span>)}</>
-        </div>
-        <p className="fine">{lang === 'en' ? 'Entertainment self-reflection only. Not psychological diagnosis. Does not predict real fate.' : QUIZ.meta.disclaimer}</p>
-        <div className="gate-seal">{lang === 'en' ? 'SELF MIRROR' : '命理自鉴'}</div>
       </div>
     )
   }
