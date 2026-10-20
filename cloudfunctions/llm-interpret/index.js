@@ -51,17 +51,38 @@ exports.main = async (event) => {
     payload = event.body
   }
   const action = payload.action || 'interpret'
+  const lang = payload.lang === 'en' ? 'en' : 'zh'
+
+  // 双语指令包：题目/解读按 lang 切换，输出字段名与结构保持一致（前端零改动共用）
+  const LANG = lang === 'en' ? {
+    quizSystem: 'You are an expert English-language quiz designer. Output strict JSON array, no markdown.',
+    themes: ['workplace dilemmas', 'family ties', 'friendship and favors', 'money and interests', 'love and intimacy', 'strangers and social life', 'online life', 'spending and lifestyle', 'unexpected situations', 'long-term life decisions'],
+    quizPreamble: 'For a "Three Kingdoms Destiny Mirror Test", write a situational multiple-choice quiz.',
+    quizRequirements: `Requirements:
+- Realistic contemporary Western everyday situations (concrete details, not abstract), 4 options (real reactions of ordinary people, no morally correct answer)
+- Cover different psychological facets: vision, insight, grit, warmth, composure
+Output JSON array (no markdown code block):
+[{"text":"question 15-30 words","options":[{"k":"A","t":"option 8-15 words"},{"k":"B","t":"..."},{"k":"C","t":"..."},{"k":"D","t":"..."}]}, ...exactly {n} items]`,
+    interpretSystem: 'You are an expert English personality writer and Chinese history scholar. Output strict JSON, no markdown.',
+    avoidDup: (a, b) => `Avoid repeating these common scenarios: ${a}, ${b}.`,
+  } : null
+  const ZH = {
+    quizSystem: '你是资深中文测评出题人，输出严格 JSON 数组，无多余文字。',
+    interpretSystem: '你是资深中文测评文案师与历史学者，输出严格 JSON，无多余文字。',
+  }
 
   try {
     if (action === 'generate_quiz') {
-      const themes = ['职场处境', '家庭与亲缘', '朋友与人情往来', '金钱与利益', '爱情与亲密关系', '陌生人社交', '网络与线上生活', '消费与生活方式', '突发意外处境', '长期人生抉择']
+      const themes = LANG ? LANG.themes : ['职场处境', '家庭与亲缘', '朋友与人情往来', '金钱与利益', '爱情与亲密关系', '陌生人社交', '网络与线上生活', '消费与生活方式', '突发意外处境', '长期人生抉择']
       const picked = []
       while (picked.length < 3) {
         const t = themes[Math.floor(Math.random() * themes.length)]
         if (!picked.includes(t)) picked.push(t)
       }
       const seed = Date.now() + Math.floor(Math.random() * 1e6)
-      const quizPrompt = (n, extra) => `为「三国命运镜像测试」出 ${n} 道情境选择题。${extra}要求：
+      const quizPrompt = (n, extra) => LANG
+        ? `${LANG.quizPreamble} ${extra} ${LANG.quizRequirements.replace('{n}', String(n))}`
+        : `为「三国命运镜像测试」出 ${n} 道情境选择题。${extra}要求：
 - 中国当代真实生活情境（具体到场景细节，不抽象），4 个选项（都是普通人会有的真实反应，无道德标准答案）
 - 覆盖不同心理面向：格局与抱负(vision)、洞察与判断(insight)、坚韧与执行(grit)、温情与义气(warmth)、沉稳与定力(composure)
 - 随机种子 ${seed}-${n}，题组要新颖
@@ -76,9 +97,10 @@ exports.main = async (event) => {
       ]
       for (let b = 0; b < batches.length; b++) {
         let raw = ''
+        const sys = LANG ? LANG.quizSystem : ZH.quizSystem
         for (let attempt = 0; attempt < 3 && !raw; attempt++) {
           try {
-            raw = await callLLM('你是资深中文测评出题人，输出严格 JSON 数组，无多余文字。', batches[b], 1.0)
+            raw = await callLLM(sys, batches[b], 1.0)
           } catch { /* 重试 */ }
           if (!raw) await new Promise(r => setTimeout(r, 600))
         }
@@ -98,7 +120,39 @@ exports.main = async (event) => {
       `${i + 1}. ${q.text}\n   选项：${q.options.map(o => `${o.k}.${o.t}`).join('｜')}\n   用户选了：${answers[i]}（${q.options.find(o => o.k === answers[i])?.t ?? ''}）`
     ).join('\n')
 
-    const prompt = `你是一位贯通中国历史的「命运原型」解读师。用户完成了一个情境测评，下面是全部 15 道题、所有选项及用户的具体选择。
+    const prompt = LANG ? `You are a "Destiny Archetype" reader versed in Chinese history. The user completed a situational assessment. Below are all 15 questions, options, and the user's specific choices.
+
+${qa}
+
+Your task:
+1. Infer ONE "Destiny Archetype" for the user from Three Kingdoms era figures (Wei/Shu/Wu/heroes — rulers, strategists, generals, scholars, ladies all allowed). Rules:
+- Must be inferred from recurring behavioral patterns in the user's choices; cite at least 3 specific choices as evidence in the reading
+- Must be a real historical figure from Records of the Three Kingdoms
+- Avoid defaulting to Zhuge Liang / Cao Cao / Liu Bei every time — whoever fits the user's profile (e.g. Jia Xu, Lu Su, Fa Zheng, Xu Shu, Guo Jia, Mi Zhu, Lady Sun)
+- The figure's destiny arc should resonate with the user's profile
+
+2. Tone ironclad rule: this is a book of admiration for the user. Every field expresses appreciation and warmth; even growth points must be sugar-coated encouragement. The user's first reaction should be "this is so accurate, I'm sharing it".
+
+3. Output strict JSON (no markdown code block), ALL string values in English:
+{
+  "person": "figure name in pinyin (2-4 chars, e.g. Guo Jia)",
+  "title": "archetype title (5-9 words English, evocative)",
+  "fateLine": "destiny arc, one poetic sentence 12-22 words",
+  "profile": "mirror portrait, 90-140 words English. Cite at least 3 specific choices as evidence. Tone: admiration — every choice read as wisdom or virtue.",
+  "strengths": "gifts, 50-90 words. 3+ shining points, warm friend tone.",
+  "blindSpots": "growth note, 40-70 words. Frame as 'the other side of your gift' — gentle, never critical, never start with negation.",
+  "advice": "parting counsel, 40-70 words, one concrete actionable suggestion echoing the figure's golden moment.",
+  "quote": "fun quote, 12-25 words, modern quip in that figure's voice, humorous.",
+  "dims": {"vision": 0-15, "insight": 0-15, "grit": 0-15, "warmth": 0-15, "composure": 0-15},
+  "dimComments": {"vision": "one-line praise (6-12 words)", "insight": "...", "grit": "...", "warmth": "...", "composure": "..."},
+  "topMatches": [
+    {"name": "Three Kingdoms figure (pinyin, 4 total incl. best match)", "pct": 0-100 int, "tag": "one-line positioning (5-10 words)"}
+  ],
+  "timeline": [
+    {"age": "life stage label", "event": "key event (5-10 words)", "mirror": "mirror to user's dimension (6-12 words, praise only)"}
+  ],
+  "versus": {"foe": "contrast figure (equally famous, different style)", "foeTitle": "their positioning (3-7 words)", "diff": "one contrast line highlighting the user's archetype's unique strength (10-20 words), never demeaning the other"}
+}` : `你是一位贯通中国历史的「命运原型」解读师。用户完成了一个情境测评，下面是全部 15 道题、所有选项及用户的具体选择。
 
 ${qa}
 
@@ -133,7 +187,7 @@ ${qa}
   "versus": {"foe": "衬托用户的对照人物（选与原型齐名但风格不同者）", "foeTitle": "对方定位(6-12字)", "diff": "一句衬托用户优势的对照(20-36字)——突出用户原型独有的可贵之处，不贬低对方"}
 }`
 
-    const raw = await callLLM('你是资深中文测评文案师与历史学者，输出严格 JSON，无多余文字。', prompt, 0.9)
+    const raw = await callLLM(LANG ? LANG.interpretSystem : ZH.interpretSystem, prompt, 0.9)
     const parsed = extractJSON(raw)
     if (!parsed || !parsed.person) return { error: 'llm output unparseable', raw: String(raw).slice(0, 500) }
     return { ...parsed, generated: true }
