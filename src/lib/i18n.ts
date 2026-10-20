@@ -3,9 +3,11 @@ export type Lang = 'zh' | 'en'
 
 export function detectLang(): Lang {
   const url = new URL(location.href)
-  if (url.searchParams.get('lang') === 'en') return 'en'
-  if (url.searchParams.get('lang') === 'zh') return 'zh'
-  return navigator.language.startsWith('zh') ? 'zh' : 'en'
+  if (url.searchParams.get('lang') === 'en') { document.documentElement.lang = 'en'; return 'en' }
+  if (url.searchParams.get('lang') === 'zh') { document.documentElement.lang = 'zh-CN'; return 'zh' }
+  const l: Lang = navigator.language.startsWith('zh') ? 'zh' : 'en'
+  document.documentElement.lang = l === 'zh' ? 'zh-CN' : 'en'
+  return l
 }
 
 const STR = {
