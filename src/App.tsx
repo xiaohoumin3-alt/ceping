@@ -40,9 +40,12 @@ export default function App() {
     const { data, error } = await supabase.rpc('verify_and_consume', { p_code: c })
     setBusy(false)
     if (error) { setCodeErr('网络异常，请重试'); return }
-    if (data === -1) { setCodeErr('密码无效，请检查后重试'); return }
-    if (data === 0) { setCodeErr('该密码的测试次数已用完'); return }
+    const remaining = typeof data === 'number' ? data : data?.remaining
+    const unlocksFull = typeof data === 'object' ? data?.unlocks_full === true : false
+    if (remaining === -1) { setCodeErr('密码无效，请检查后重试'); return }
+    if (remaining === 0) { setCodeErr('该密码的测试次数已用完'); return }
     setCode(c)
+    setUnlocked(unlocksFull)  // 全解锁码进门即解锁，跳过付费墙
     startQuiz()
   }
 
