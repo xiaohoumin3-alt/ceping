@@ -61,13 +61,26 @@ export function drawPoster(result: QuizResult, dimScores: Record<string, number>
     ctx.strokeStyle = 'rgba(201,169,97,0.25)'
     ctx.beginPath(); ctx.moveTo(120, 600); ctx.lineTo(W-120, 600); ctx.stroke()
 
-    // 镜中人
+    // 镜中人（自适应截断：海报是炫耀卡片不是全文，超长会压坏版式）
     let y = 664
     ctx.font = '24px "Noto Serif SC", serif'
-    y = drawBlock(ctx, '镜 中 人', result.profile, y)
-    y = drawBlock(ctx, '天 赋', result.strengths, y)
-    y = drawBlock(ctx, '盲 区', result.blindSpots, y)
-    y = drawBlock(ctx, '赠 言', result.advice, y)
+    const LIMIT = 1108 // 底部信息+印章安全线
+    const clip = (s: string, n: number) => {
+      const c = Array.from(s)
+      return c.length > n ? c.slice(0, n).join('') + '……' : s
+    }
+    // 逐块预算：按剩余空间截行
+    const budget = [2, 2, 1, 1] as const // 各块最多行数：镜中人/天赋/盲区/赠言
+    const texts = [result.profile, result.strengths, result.blindSpots, result.advice]
+    const labels = ['镜 中 人', '天 赋', '盲 区', '赠 言']
+    for (let i = 0; i < 4; i++) {
+      const remain = LIMIT - y
+      const maxLines = Math.max(0, Math.min(budget[i], Math.floor((remain - 76) / 40)))
+      if (maxLines === 0) break
+      const maxChars = maxLines * Math.floor(590 / 25)
+      y = drawBlock(ctx, labels[i], clip(texts[i], maxChars), y)
+      if (y >= LIMIT) break
+    }
 
     // 金句
     if (y < 1120) {
