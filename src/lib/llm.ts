@@ -26,11 +26,11 @@ async function post(body: unknown, timeoutMs: number): Promise<any> {
   } finally { clearTimeout(timer) }
 }
 
-/** 动态生成 15 道题（云函数内部带重试；此处再兜底重试一次） */
+/** 动态生成 6 道题（云函数内部带重试；此处再兜底重试一次） */
 export async function generateQuiz(lang: 'zh' | 'en' = 'zh'): Promise<DynQuestion[]> {
   for (let i = 0; i < 2; i++) {
     const d = await post({ action: 'generate_quiz', lang }, 120000)
-    if (Array.isArray(d.questions) && d.questions.length === 15) {
+    if (Array.isArray(d.questions) && d.questions.length >= 6) {
       // 规整：确保 4 选项且 k 为 A-D
       return d.questions.map((q: DynQuestion) => ({
         text: String(q.text ?? ''),
