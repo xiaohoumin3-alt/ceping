@@ -66,7 +66,7 @@ export default function App() {
   function choose(k: string) {
     const next = [...answers]; next[idx] = k
     setAnswers(next)
-    if (idx < (questions?.length ?? 15) - 1) setTimeout(() => setIdx(idx + 1), 150)
+    if (idx < (questions?.length ?? 6) - 1) setTimeout(() => setIdx(idx + 1), 150)
   }
 
   async function finish() {
