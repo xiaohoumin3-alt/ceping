@@ -62,7 +62,7 @@ export function drawPoster(result: QuizResult, dimScores: Record<string, number>
     ctx.beginPath(); ctx.moveTo(120, 600); ctx.lineTo(W-120, 600); ctx.stroke()
 
     // 镜中人（自适应截断：海报是炫耀卡片不是全文，超长会压坏版式）
-    let y = 664
+    let y = 730 // 五维条画到 ~688，正文块必须从其下开始，否则压版
     ctx.font = '24px "Noto Serif SC", serif'
     const LIMIT = 1108 // 底部信息+印章安全线
     const clip = (s: string, n: number) => {
