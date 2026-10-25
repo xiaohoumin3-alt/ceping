@@ -260,6 +260,29 @@ body {
 
 /* ---------- 可视化组件 ---------- */
 .viz-block { border-left-color: var(--cinnabar); }
+
+/* 人生三幕：压轴预测资产，鎏金卡片 */
+.tl-feature {
+  margin-top: 26px; padding: 22px 18px 20px;
+  border: 1px solid rgba(201,169,97,0.55);
+  border-left: 3px solid var(--gold-bright);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(201,169,97,0.10), transparent 60%),
+    rgba(232,221,196,0.045);
+  box-shadow: 0 0 26px rgba(201,169,97,0.10), inset 0 0 30px rgba(201,169,97,0.04);
+}
+.tl-feature h3 {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 15px; color: var(--gold-bright); letter-spacing: 5px;
+}
+.tl-feature h3::before { content: '◈'; color: var(--gold-bright); letter-spacing: 0; }
+.tl-feature .tl-age { font-size: 13px; color: var(--gold-bright); }
+.tl-feature .tl-event { font-size: 16px; color: var(--gold-bright); }
+.tl-feature .tl-mirror { color: var(--paper); font-size: 13px; }
+.tl-feature .tl-node {
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 10px rgba(201,169,97,0.35);
+}
 .radar-wrap { display: flex; justify-content: center; margin: 26px 0 8px; }
 .radar-wrap canvas { filter: drop-shadow(0 0 18px rgba(201,169,97,0.12)); }
 
