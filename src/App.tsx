@@ -258,7 +258,7 @@ export default function App() {
 
       {r.timeline && r.timeline.length > 0 && (
         <div className="r-block viz-block tl-feature">
-          <h3>他 的 人 生 三 幕</h3>
+          <h3>你 的 人 生 三 幕</h3>
           <Timeline items={r.timeline} />
         </div>
       )}
