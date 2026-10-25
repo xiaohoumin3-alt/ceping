@@ -255,6 +255,14 @@ export default function App() {
       )}
 
       <div className="r-block"><h3>镜 中 人<span className="llm-hint ok"> · 专属推演</span></h3><p>{r.profile}</p></div>
+
+      {r.timeline && r.timeline.length > 0 && (
+        <div className="r-block viz-block tl-feature">
+          <h3>他 的 人 生 三 幕</h3>
+          <Timeline items={r.timeline} />
+        </div>
+      )}
+
       <div className="r-block"><h3>天 赋</h3><p>{r.strengths}</p></div>
       <div className="r-block"><h3>盲 区</h3><p>{r.blindSpots}</p></div>
       <div className="r-block"><h3>赠 言</h3><p>{r.advice}</p></div>
@@ -263,13 +271,6 @@ export default function App() {
         <div className="r-block viz-block">
           <h3>群 像 相 似 度</h3>
           <MatchBars matches={r.topMatches} me={r.person} />
-        </div>
-      )}
-
-      {r.timeline && r.timeline.length > 0 && (
-        <div className="r-block viz-block">
-          <h3>他 的 人 生 三 幕</h3>
-          <Timeline items={r.timeline} />
         </div>
       )}
 
